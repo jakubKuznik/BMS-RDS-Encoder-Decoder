@@ -12,7 +12,11 @@
 #include <string.h>
 #include <algorithm>
 #include <regex>
-#include <iomanip> 
+#include <iomanip>
+
+# define AF_SIZE 2
+# define PS_SIZE 8 
+# define RT_SIZE_PLUS_TERMINATOR 65 
 
 typedef struct {
     unsigned int pi;  
@@ -23,12 +27,12 @@ typedef struct {
 typedef struct {
     bool ms;                    
     bool ta;                     
-    std::vector<float> af;       
-    std::string ps;              
+    float af[AF_SIZE];       
+    char ps[PS_SIZE]; 
 } Flags0A;
 
 typedef struct {
-    std::string rt;   
+    char rt[RT_SIZE_PLUS_TERMINATOR];   
     bool ab;          
 } Flags2A;
 
