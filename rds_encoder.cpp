@@ -125,7 +125,6 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
     bool flags2Art = false, flags2Aab = false;
 
     for (int i = 0; i < argc; i++) {
-        std::cerr << "num: " << i <<  " Arg: " << argv[i] << std::endl;
 
         // Ensure each argument has a corresponding value
         if (i + 1 == argc && argc != 1) {
@@ -243,19 +242,110 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
     }
 
     return;
-
 errorArgs:
     cerr << "Error: wrong arguments. Try using {-h|--help}" << endl;
     exit(1);
 }
 
+// Function to count CRC
+unsigned short countCRC(uint16_t data) {
+    // Step 1: Append 10 zeros to the input data (shift left by 10 bits)
+    uint32_t extendedData = (static_cast<uint32_t>(data) << 10);
+
+    int divisorDegree = 10; 
+    int divisorShift = 15;     
+
+    std::cout << "initial data :    " << std::bitset<26>(extendedData) << "\n";
+    std::cout << "initial divisor:                 " << std::bitset<11>(CRC_KEY) << "\n";
+    uint32_t res = extendedData;
+    uint16_t currentBit = 25;
+    // Loop through the bits of extendedData
+    for (int i = 0; i < 15; i++) {
+       
+        uint32_t shiftedDivisor = CRC_KEY << divisorShift; // Shift the divisor
+        // Print the current state before checking
+        std::cout << "===================================" << "\n";
+        std::cout << "Divisor Shift: " << divisorShift << "\n";
+        std::cout << "Current Bit:   " << currentBit << "\n";
+        std::cout << "Data:    " << std::bitset<26>(res) << "\n";
+        std::cout << "Divisor: " << std::bitset<26>(shiftedDivisor) << "\n";
+        
+        // Check if the n-th bit is set to 1
+        if((res & (1 << currentBit--)) == 0) {
+            std::cout << "SKIP" << endl;
+            divisorShift = divisorShift -1;
+            continue;
+        }
+
+        res = res ^ shiftedDivisor;
+        std::cout << "Result:  " << std::bitset<26>(res) << "\n";
+        divisorShift = divisorShift -1;
+
+    }
+    std::cout << "===================================" << "\n";
+    std::cout << "Result:  " << std::bitset<10>(res) << "\n";
+    std::cout << "Now, just add one of the Bulgarian constants depending on which block it is; for the first block, use Bulgarian constant A." << std::endl;
+    res = res ^ BLOCK_OFFSET_A;
+    std::cout << "FINAL RESULT (result xor A (0xFC)):  " << std::bitset<10>(res) << "\n";
+
+
+    // Step 3: The remainder is now in the lower bits (the last 10 bits)
+    unsigned short remainder = static_cast<unsigned short>(extendedData);
+
+    // Return the computed CRC value (last 10 bits as CRC)
+    return remainder & 0x3FF; // Mask to get the last 10 bits
+}
+    
+
+/** 
+ * Generate common flags (part of the mesage)
+ */
+void generateOutputCommon(FlagsCommon *flags){
+    cerr << "GenerateOutputCommon" << endl;
+}
+
+/** 
+ * Generate 0A flags (part of the mesage)
+ */
+void generateOutput0a(Flags0A *flags){
+    cerr << "GenerateOutput0a" << endl;
+}
+
+/** 
+ * Generate 2A flags (part of the mesage)
+ */
+void generateOutput2a(Flags2A *flags){
+    cerr << "GenerateOutput2a" << endl;
+
+}
+
+/** 
+ * Whole message with CRC
+ */
+void generateOutput(ProgramConfig *config){
+
+    // generate common 
+    generateOutputCommon(&config->flagsCommon);
+    
+    if (config->is0A){
+        generateOutput0a(&config->flags0A);
+    } else if (config->is2A){
+        generateOutput2a(&config->flags2A);
+    }
+} 
 
 int main(int argc, char **argv){
-	
-	ProgramConfig config;
 
-	argParse(argc, argv, &config);
+    ProgramConfig config;
 
+    argParse(argc, argv, &config);
+
+    generateOutput(&config);
+
+    unsigned short dataBlock = 0b0001001000110100; // 16-bit data
+    unsigned short crc = countCRC(dataBlock);
+    std::cout << "Data Block: " << std::bitset<16>(dataBlock) << std::endl;
+    std::cout << "CRC: " << std::bitset<10>(crc) << std::endl; // Only 10 bits for CRC
 
 
 }

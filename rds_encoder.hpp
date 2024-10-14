@@ -16,7 +16,14 @@
 
 # define AF_SIZE 2
 # define PS_SIZE 8 
-# define RT_SIZE_PLUS_TERMINATOR 65 
+# define RT_SIZE_PLUS_TERMINATOR 65
+
+# define CRC_KEY 0b10110111001
+
+#define BLOCK_OFFSET_A 0b0011111100; 
+#define BLOCK_OFFSET_B 0b0110011000; 
+#define BLOCK_OFFSET_C 0b0101101000; 
+#define BLOCK_OFFSET_D 0b0110110100; 
 
 typedef struct {
     unsigned int pi;  
