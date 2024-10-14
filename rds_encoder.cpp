@@ -247,55 +247,80 @@ errorArgs:
     exit(1);
 }
 
-// Function to count CRC
-unsigned short countCRC(uint16_t data) {
+/**
+ * Count CRC of data
+ * @param data: The input data for CRC calculation
+ * @return: The computed CRC value (last 10 bits as uint16_t)
+ */
+uint16_t countCRC(uint16_t data, uint16_t magicConst) {
+    
     // Step 1: Append 10 zeros to the input data (shift left by 10 bits)
     uint32_t extendedData = (static_cast<uint32_t>(data) << 10);
 
     int divisorDegree = 10; 
     int divisorShift = 15;     
-
-    std::cout << "initial data :    " << std::bitset<26>(extendedData) << "\n";
-    std::cout << "initial divisor:                 " << std::bitset<11>(CRC_KEY) << "\n";
-    uint32_t res = extendedData;
     uint16_t currentBit = 25;
+
+    //std::cerr << "Initial Data:    " << std::bitset<26>(extendedData) << "\n";
+    //std::cerr << "Initial Divisor:                 " << std::bitset<11>(CRC_KEY) << "\n";
+
     // Loop through the bits of extendedData
-    for (int i = 0; i < 15; i++) {
-       
+    for (int i = 0; i < 16; i++) {
         uint32_t shiftedDivisor = CRC_KEY << divisorShift; // Shift the divisor
+        
         // Print the current state before checking
-        std::cout << "===================================" << "\n";
-        std::cout << "Divisor Shift: " << divisorShift << "\n";
-        std::cout << "Current Bit:   " << currentBit << "\n";
-        std::cout << "Data:    " << std::bitset<26>(res) << "\n";
-        std::cout << "Divisor: " << std::bitset<26>(shiftedDivisor) << "\n";
+        //std::cerr << "===================================\n";
+        //std::cerr << "Divisor Shift: " << divisorShift << "\n";
+        //std::cerr << "Current Bit:   " << currentBit << "\n";
+        //std::cerr << "Data:    " << std::bitset<26>(extendedData) << "\n";
+        //std::cerr << "Divisor: " << std::bitset<26>(shiftedDivisor) << "\n";
         
         // Check if the n-th bit is set to 1
-        if((res & (1 << currentBit--)) == 0) {
-            std::cout << "SKIP" << endl;
-            divisorShift = divisorShift -1;
+        if ((extendedData & (1 << currentBit--)) == 0) {
+            //std::cerr << "SKIP" << std::endl;
+            divisorShift--;
             continue;
         }
 
-        res = res ^ shiftedDivisor;
-        std::cout << "Result:  " << std::bitset<26>(res) << "\n";
-        divisorShift = divisorShift -1;
-
+        extendedData = extendedData ^ shiftedDivisor;
+        // std::cerr << "Result:  " << std::bitset<26>(extendedData) << "\n";
+        divisorShift--;
     }
-    std::cout << "===================================" << "\n";
-    std::cout << "Result:  " << std::bitset<10>(res) << "\n";
-    std::cout << "Now, just add one of the Bulgarian constants depending on which block it is; for the first block, use Bulgarian constant A." << std::endl;
-    res = res ^ BLOCK_OFFSET_A;
-    std::cout << "FINAL RESULT (result xor A (0xFC)):  " << std::bitset<10>(res) << "\n";
 
+    // std::cerr << "===================================\n";
+    // std::cerr << "Result:  " << std::bitset<10>(extendedData) << "\n";
+    // std::cerr << "Now, just add one of the Bulgarian constants depending on which block it is; for the first block, use Bulgarian constant A." << std::endl;
 
-    // Step 3: The remainder is now in the lower bits (the last 10 bits)
-    unsigned short remainder = static_cast<unsigned short>(extendedData);
+    extendedData = extendedData ^ magicConst;
+    // std::cerr << "FINAL RESULT (result XOR A (0xFC)):  " << std::bitset<10>(extendedData) << "\n";
 
-    // Return the computed CRC value (last 10 bits as CRC)
-    return remainder & 0x3FF; // Mask to get the last 10 bits
+    // Return the computed CRC value (last 10 bits as uint16_t)
+    return static_cast<uint16_t>(extendedData & 0x3FF); // Mask to get the last 10 bits
 }
-    
+
+/** 
+ * Calculate CRCs for four data blocks with specified offsets
+ * @return: An array of computed CRC values for each data block
+ */
+std::array<uint16_t, 4> calculateCRCs(uint16_t dataBlocks[4]) {
+
+    // Define offsets
+    uint16_t offsets[4] = {
+        CRC_BLOCK_OFFSET_A,
+        CRC_BLOCK_OFFSET_B,
+        CRC_BLOCK_OFFSET_C,
+        CRC_BLOCK_OFFSET_D
+    };
+
+    std::array<uint16_t, 4> crcResults;
+
+    for (size_t i = 0; i < 4; i++) {
+        crcResults[i] = countCRC(dataBlocks[i], offsets[i]);
+    }
+
+    return crcResults;
+}
+
 
 /** 
  * Generate common flags (part of the mesage)
@@ -342,10 +367,19 @@ int main(int argc, char **argv){
 
     generateOutput(&config);
 
-    unsigned short dataBlock = 0b0001001000110100; // 16-bit data
-    unsigned short crc = countCRC(dataBlock);
-    std::cout << "Data Block: " << std::bitset<16>(dataBlock) << std::endl;
-    std::cout << "CRC: " << std::bitset<10>(crc) << std::endl; // Only 10 bits for CRC
+    
+    // Define data blocks
+    uint16_t dataBlocks[4] = {
+        0b0001001000110100, // Data block 1
+        0b0000010010110000, // Data block 2
+        0b1010101001101001, // Data block 3
+        0b0101001001100001  // Data block 4
+    };
+    std::array<uint16_t, 4> crcResults = calculateCRCs(dataBlocks);
 
+    // Output the CRC results
+    for (size_t i = 0; i < crcResults.size(); i++) {
+        std::cout << "CRC for Data Block " << std::bitset<16>(dataBlocks[i]) << ": " << std::bitset<10>(crcResults[i]) << std::endl;
+    }
 
 }
