@@ -353,19 +353,28 @@ std::array<uint16_t, 4> calculateCRCs(uint16_t dataBlocks[4]) {
 
     return crcResults;
 }
+/**
+ *  0000 0001 is 87.6
+ *  0000 0010 is 87.7
+ *  0000 0011 is 87.8
+ *  0000 0100 is 87.9
+ */
+uint8_t parseFrequencyToBinary(float frequency) {
 
-string parseFrequencyToBinary(float frequency) {
-    // Subtract 87.5 MHz to normalize the frequency and multiply by 10 to get the step
-    int step = round((frequency - 87.5) * 10);
+    // Subtract 87.6 MHz to normalize the frequency and 
+    // multiply by 10 to get the step
+    // Add 1 because 87.6 starts at 1 (not 0)
+    int step = round((frequency - 87.6) * 10) + 1;  
 
-    // Return the binary representation as 8 bits
-    return bitset<8>(step).to_string();
+    // Return the step as an 8-bit unsigned integer
+    return static_cast<uint8_t>(step);
 }
 
 /** 
  * Generate 0A flags (part of the mesage)
  * 
  * frame_number - 00 -> 01 -> 10 -> 11
+ *
  * 
  */
 void generateOutput0a(ProgramConfig *config, uint8_t frame_number){
@@ -383,15 +392,18 @@ void generateOutput0a(ProgramConfig *config, uint8_t frame_number){
     output |= (0 << 2);                        // DI (Always 0, 1 bit)
     output |= (frame_number & 0b11);           // Frame number (2 bits)
 
-    // Now print the 16-bit variable as binary
     cout << bitset<16>(output);
     cout << " " << bitset<10>(countCRC(output, CRC_BLOCK_OFFSET_B)) << endl;
-
-    // 0000 0001 is 87.6
-    // 0000 0010 is 87.7
-    // 0000 0011 is 87.8
-    // 0000 0100 is 87.9
-
+    
+    // second row 
+    output = 0;
+    uint8_t first  = parseFrequencyToBinary(config->flags0A.af[0]);
+    uint8_t second = parseFrequencyToBinary(config->flags0A.af[1]);
+    output |= (first << 8);
+    output |= (second);
+    
+    cout << bitset<16>(output);
+    cout << " " << bitset<10>(countCRC(output, CRC_BLOCK_OFFSET_C)) << endl;
 }
 
 /** 
