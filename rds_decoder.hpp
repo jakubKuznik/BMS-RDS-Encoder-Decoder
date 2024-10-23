@@ -5,10 +5,6 @@
 // Login: xkuzni04
 // Year: 2024
 
-
 #include <iostream>
-#include <list>
-#include <string.h>
-#include <algorithm>
-#include <regex>
 #include <iomanip> 
+#include <bitset>
