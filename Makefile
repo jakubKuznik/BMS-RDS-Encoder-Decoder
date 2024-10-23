@@ -27,3 +27,6 @@ clean:
 # Create a zip file for submission
 zip: Makefile rds_encoder.cpp rds_encoder.hpp rds_decoder.cpp rds_decoder.hpp README.md xkuzni04.pdf
 	zip xkuzni04.zip $^
+
+run:
+	./rds_encoder -g 0A -pi 4660 -pty 5 -tp 1 -ms 0 -ta 1 -af 104.5,98.0 -ps "RadioXYZ"

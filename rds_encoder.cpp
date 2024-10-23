@@ -240,6 +240,8 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
         } 
 
     }
+    
+    printProgramConfig(*config);
 
     // error check
     if (config->is0A && config->is2A) {
@@ -274,7 +276,6 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
 
     return;
 errorArgs:
-    printProgramConfig(*config);
     cerr << "Error: wrong arguments. Try using {-h|--help}" << endl;
     exit(1);
 }
@@ -353,25 +354,17 @@ std::array<uint16_t, 4> calculateCRCs(uint16_t dataBlocks[4]) {
     return crcResults;
 }
 
-
-/** 
- * Generate common flags (part of the mesage)
- */
-void generateOutputCommon(FlagsCommon *flags){
-    cerr << "GenerateOutputCommon" << endl;
-}
-
 /** 
  * Generate 0A flags (part of the mesage)
  */
-void generateOutput0a(Flags0A *flags){
-    cerr << "GenerateOutput0a" << endl;
+void generateOutput0a(ProgramConfig *config){
+
 }
 
 /** 
  * Generate 2A flags (part of the mesage)
  */
-void generateOutput2a(Flags2A *flags){
+void generateOutput2a(ProgramConfig *config){
     cerr << "GenerateOutput2a" << endl;
 
 }
@@ -381,13 +374,13 @@ void generateOutput2a(Flags2A *flags){
  */
 void generateOutput(ProgramConfig *config){
 
-    // generate common 
-    generateOutputCommon(&config->flagsCommon);
+    cout << "" << bitset<16>(config->flagsCommon.pi);
+    cout << " " << bitset<10>(countCRC(config->flagsCommon.pi, CRC_BLOCK_OFFSET_A)) << endl;
     
     if (config->is0A){
-        generateOutput0a(&config->flags0A);
+        generateOutput0a(config);
     } else if (config->is2A){
-        generateOutput2a(&config->flags2A);
+        generateOutput2a(config);
     }
 } 
 
@@ -413,5 +406,7 @@ int main(int argc, char **argv){
     for (size_t i = 0; i < crcResults.size(); i++) {
         std::cout << "CRC for Data Block " << std::bitset<16>(dataBlocks[i]) << ": " << std::bitset<10>(crcResults[i]) << std::endl;
     }
+    
+
 
 }
