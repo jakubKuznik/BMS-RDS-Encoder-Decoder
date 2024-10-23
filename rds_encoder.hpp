@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <regex>
 #include <cmath>
+#include <iomanip>  // For std::fixed and std::setprecision
 
 # define AF_SIZE 2
 # define PS_SIZE 8 

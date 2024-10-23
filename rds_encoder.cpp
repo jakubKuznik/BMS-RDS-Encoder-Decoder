@@ -118,9 +118,14 @@ void parseAfArg(const char* arg, float (&af)[AF_SIZE]) {
     if (!(iss >> freq1) || !(iss >> freq2) || !iss.eof()) {
         throw std::invalid_argument("Invalid alternative frequencies");
     }
-    
+
+    // Set the frequencies to the af array
     af[0] = freq1;
     af[1] = freq2;
+
+    // Output the frequencies with one decimal precision, ensuring `.0` is printed
+    std::cout << std::fixed << std::setprecision(1);
+    std::cout << "f1 " << af[0] << " f2 " << af[1] << std::endl;
 }
 
 void parseStringArg(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
@@ -353,6 +358,7 @@ std::array<uint16_t, 4> calculateCRCs(uint16_t dataBlocks[4]) {
 
     return crcResults;
 }
+
 /**
  *  0000 0001 is 87.6
  *  0000 0010 is 87.7
@@ -360,11 +366,16 @@ std::array<uint16_t, 4> calculateCRCs(uint16_t dataBlocks[4]) {
  *  0000 0100 is 87.9
  */
 uint8_t parseFrequencyToBinary(float frequency) {
-
-    // Subtract 87.6 MHz to normalize the frequency and 
-    // multiply by 10 to get the step
-    // Add 1 because 87.6 starts at 1 (not 0)
-    int step = round((frequency - 87.6) * 10) + 1;  
+    
+    // Normalize the frequency: Subtract 87.5 MHz and multiply by 10
+    float step_float = (frequency - 87.5) * 10;
+    int step = static_cast<int>(round(step_float));
+    
+    // Check if the step is within the valid range (0-255 for 8 bits)
+    if (step < 0 || step > 255) {
+        throw std::invalid_argument("Frequency out of range for binary representation.");
+    }
+    cout << "freq: " << frequency << " " << bitset<8>(step) << endl;
 
     // Return the step as an 8-bit unsigned integer
     return static_cast<uint8_t>(step);
@@ -374,36 +385,54 @@ uint8_t parseFrequencyToBinary(float frequency) {
  * Generate 0A flags (part of the mesage)
  * 
  * frame_number - 00 -> 01 -> 10 -> 11
- *
  * 
  */
-void generateOutput0a(ProgramConfig *config, uint8_t frame_number){
+void generateOutput0a(ProgramConfig *config){
     
-    // 16-bit variable to hold the final result
-    uint16_t output = 0;  
+    uint16_t row2 = 0;  
+    uint16_t row3 = 0;
+    uint16_t row4 = 0;
+    
+    // SECOND ROW - FLAGS
+    uint8_t frame_num = 0; // frame num we set in loop
+    row2 |= (0 << 12);  // First 4 bits (0000 represents 0A)
+    row2 |= (0 << 11);  // A/B (next bit, assumed as 0 here)
+    row2 |= (config->flagsCommon.tp << 10);  // TP (1 bit)
+    row2 |= (config->flagsCommon.pty << 5);  // PTY (5 bits)
+    row2 |= (config->flags0A.ta << 4);       // TA (1 bit)
+    row2 |= (config->flags0A.ms << 3);       // M/S (1 bit)
+    row2 |= (0 << 2);                        // DI (Always 0, 1 bit)
+        
+    // THIRD ROW - Frequencies  
+    row3 |= ((parseFrequencyToBinary(config->flags0A.af[0])) << 8);
+    row3 |= (parseFrequencyToBinary(config->flags0A.af[1]));
+    
+    for (int i = 0; i < 4; i++){
+        // FIRST ROW - FLAGS
+        cout << "" << bitset<16>(config->flagsCommon.pi);
+        cout << " " << bitset<10>(countCRC(config->flagsCommon.pi, CRC_BLOCK_OFFSET_A)) << endl;
+        
+        // SECOND ROW - FLAGS
+        // clear last 2 bits 
+        row2 &= 0b1111111111111100; // Clear last two bits (set them to 0)
+        row2 |= (frame_num & 0b11);
+        frame_num++;
+        cout << bitset<16>(row2);
+        cout << " " << bitset<10>(countCRC(row2, CRC_BLOCK_OFFSET_B)) << endl;
+    
+        // THIRD ROW - Frequencies  
+        cout << bitset<16>(row3);
+        cout << " " << bitset<10>(countCRC(row3, CRC_BLOCK_OFFSET_C)) << endl;
+        row3 = 0;
 
-    // Set individual bits into the 16-bit variable
-    output |= (0 << 12);  // First 4 bits (0000 represents 0A)
-    output |= (0 << 11);  // A/B (next bit, assumed as 0 here)
-    output |= (config->flagsCommon.tp << 10);  // TP (1 bit)
-    output |= (config->flagsCommon.pty << 5);  // PTY (5 bits)
-    output |= (config->flags0A.ta << 4);       // TA (1 bit)
-    output |= (config->flags0A.ms << 3);       // M/S (1 bit)
-    output |= (0 << 2);                        // DI (Always 0, 1 bit)
-    output |= (frame_number & 0b11);           // Frame number (2 bits)
-
-    cout << bitset<16>(output);
-    cout << " " << bitset<10>(countCRC(output, CRC_BLOCK_OFFSET_B)) << endl;
+        // FOURTH ROW - MESSAGE 
+        row4 = 0;
+        row4 |= (static_cast<uint8_t>(config->flags0A.ps[(i*2)]) << 8);
+        row4 |= (static_cast<uint8_t>(config->flags0A.ps[(i*2)+1]));
     
-    // second row 
-    output = 0;
-    uint8_t first  = parseFrequencyToBinary(config->flags0A.af[0]);
-    uint8_t second = parseFrequencyToBinary(config->flags0A.af[1]);
-    output |= (first << 8);
-    output |= (second);
-    
-    cout << bitset<16>(output);
-    cout << " " << bitset<10>(countCRC(output, CRC_BLOCK_OFFSET_C)) << endl;
+        cout << bitset<16>(row4);
+        cout << " " << bitset<10>(countCRC(row4, CRC_BLOCK_OFFSET_D)) << endl << endl;
+    }
 }
 
 /** 
@@ -423,12 +452,10 @@ void generateOutput2a(ProgramConfig *config){
  */
 void generateOutput(ProgramConfig *config){
 
-    cout << "" << bitset<16>(config->flagsCommon.pi);
-    cout << " " << bitset<10>(countCRC(config->flagsCommon.pi, CRC_BLOCK_OFFSET_A)) << endl;
     
     if (config->is0A){
         // 0 means first frame 
-        generateOutput0a(config, 0);
+        generateOutput0a(config);
     } else if (config->is2A){
         generateOutput2a(config);
     }
