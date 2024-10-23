@@ -9,6 +9,39 @@
 
 using namespace std;
 
+// todo delete
+void printProgramConfig(const ProgramConfig &config) {
+    cerr << "ProgramConfig: " << endl;
+    
+    // Print general flags
+    cerr << "  is0A: " << boolalpha << config.is0A << endl;
+    cerr << "  is2A: " << boolalpha << config.is2A << endl;
+
+    // Print FlagsCommon
+    cerr << "  FlagsCommon: " << endl;
+    cerr << "    pi: " << config.flagsCommon.pi << endl;
+    cerr << "    pty: " << config.flagsCommon.pty << endl;
+    cerr << "    tp: " << boolalpha << config.flagsCommon.tp << endl;
+
+    // Print Flags0A
+    cerr << "  Flags0A: " << endl;
+    cerr << "    ms: " << boolalpha << config.flags0A.ms << endl;
+    cerr << "    ta: " << boolalpha << config.flags0A.ta << endl;
+    cerr << "    af: [";
+    for (int i = 0; i < AF_SIZE; ++i) {
+        cerr << config.flags0A.af[i];
+        if (i < AF_SIZE - 1) cerr << ", ";
+    }
+    cerr << "]" << endl;
+    cerr << "    ps: " << config.flags0A.ps << endl;
+
+    // Print Flags2A
+    cerr << "  Flags2A: " << endl;
+    cerr << "    rt: " << config.flags2A.rt << endl;
+    cerr << "    ab: " << boolalpha << config.flags2A.ab << endl;
+}
+
+
 /**
  * Prints help and exit program with return code 1
 */
@@ -124,12 +157,7 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
     bool flags0Ams = false, flags0Ata = false, flags0Aaf = false, flags0Aps = false;
     bool flags2Art = false, flags2Aab = false;
 
-    for (int i = 0; i < argc; i++) {
-
-        // Ensure each argument has a corresponding value
-        if (i + 1 == argc && argc != 1) {
-            goto errorArgs;
-        }
+    for (int i = 1; i < argc; i++) {
 
         if (strcmp(argv[i],"--help") == 0 || strcmp(argv[i], "-h") == 0) {
             printHelp();
@@ -207,6 +235,8 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
             } catch (...) {
                 goto errorArgs;
             }
+        } else {
+            goto errorArgs;
         } 
 
     }
@@ -241,8 +271,10 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
         goto errorArgs;
     }
 
+
     return;
 errorArgs:
+    printProgramConfig(*config);
     cerr << "Error: wrong arguments. Try using {-h|--help}" << endl;
     exit(1);
 }
