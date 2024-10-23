@@ -356,8 +356,28 @@ std::array<uint16_t, 4> calculateCRCs(uint16_t dataBlocks[4]) {
 
 /** 
  * Generate 0A flags (part of the mesage)
+ * 
+ * frame_number - 00 -> 01 -> 10 -> 11
+ * 
  */
-void generateOutput0a(ProgramConfig *config){
+void generateOutput0a(ProgramConfig *config, uint8_t frame_number){
+    
+    // 16-bit variable to hold the final result
+    uint16_t output = 0;  
+
+    // Set individual bits into the 16-bit variable
+    output |= (0 << 12);  // First 4 bits (0000 represents 0A)
+    output |= (0 << 11);  // A/B (next bit, assumed as 0 here)
+    output |= (config->flagsCommon.tp << 10);  // TP (1 bit)
+    output |= (config->flagsCommon.pty << 5);  // PTY (5 bits)
+    output |= (config->flags0A.ta << 4);       // TA (1 bit)
+    output |= (config->flags0A.ms << 3);       // M/S (1 bit)
+    output |= (0 << 2);                        // DI (Always 0, 1 bit)
+    output |= (frame_number & 0b11);           // Frame number (2 bits)
+
+    // Now print the 16-bit variable as binary
+    cout << bitset<16>(output);
+    cout << " " << bitset<10>(countCRC(output, CRC_BLOCK_OFFSET_B)) << endl;
 
 }
 
@@ -365,7 +385,11 @@ void generateOutput0a(ProgramConfig *config){
  * Generate 2A flags (part of the mesage)
  */
 void generateOutput2a(ProgramConfig *config){
-    cerr << "GenerateOutput2a" << endl;
+    
+    // 0020 represents 2A 
+    cout << bitset<4>(2);
+    // A/B 
+    cout << bitset<1>(0);
 
 }
 
@@ -378,10 +402,12 @@ void generateOutput(ProgramConfig *config){
     cout << " " << bitset<10>(countCRC(config->flagsCommon.pi, CRC_BLOCK_OFFSET_A)) << endl;
     
     if (config->is0A){
-        generateOutput0a(config);
+        // 0 means first frame 
+        generateOutput0a(config, 0);
     } else if (config->is2A){
         generateOutput2a(config);
     }
+    cout << endl;
 } 
 
 int main(int argc, char **argv){
