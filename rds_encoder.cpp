@@ -41,7 +41,6 @@ void printProgramConfig(const ProgramConfig &config) {
     cerr << "    ab: " << boolalpha << config.flags2A.ab << endl;
 }
 
-
 /**
  * Prints help and exit program with return code 1
 */
