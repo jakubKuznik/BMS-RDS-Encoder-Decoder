@@ -9,7 +9,7 @@
 
 using namespace std;
 
-// todo delete
+// TODO delete
 void printProgramConfig(const ProgramConfig &config) {
     cerr << "ProgramConfig: " << endl;
     
@@ -79,7 +79,6 @@ void printHelp(){
 	exit(1);
 }
 
-
 bool parseBoolArg(const char* arg) {
     try {
         int myInt = std::stoi(arg);
@@ -128,7 +127,8 @@ void parseAfArg(const char* arg, float (&af)[AF_SIZE]) {
     std::cout << "f1 " << af[0] << " f2 " << af[1] << std::endl;
 }
 
-void parsePS(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
+
+void parseStringArg(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
     size_t len = std::strlen(arg);
     
     if (len > maxLength) {
@@ -149,37 +149,6 @@ void parsePS(const char* arg, char* dest, size_t maxLength, bool padWithSpaces =
         dest[len] = '\0';
     }
 }
-
-void parseRT(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
-    size_t len = std::strlen(arg);
-    
-    if (len > maxLength) {
-        throw std::invalid_argument("Input string is too long (must be " + std::to_string(maxLength) + " characters or fewer)");
-    }
-
-    std::strncpy(dest, arg, maxLength);
-
-    for (int i = len; i < RT_SIZE_PLUS_TERMINATOR-1; i++){
-        dest[i] = ' ';
-    }
-    dest[RT_SIZE_PLUS_TERMINATOR-1] = '\0';
-
-    // // TODO 
-    // // Calculate the target length for padding to the nearest multiple of 4
-    // // size_t paddedLength = ((len + 3) / 4) * 4;  // Next multiple of 4
-
-    // // If padding with spaces is required, and the length is less than paddedLength, pad with spaces
-    // if (padWithSpaces && len < paddedLength) {
-    //     for (size_t i = len; i < paddedLength; ++i) {
-    //         dest[i] = ' ';
-    //     }
-    //     dest[paddedLength] = '\0';  // Null-terminate after padding
-    // } else {
-    //     // Always null-terminate when no padding is needed
-    //     dest[len] = '\0';
-    // }
-}
-
 
 /**
  * Parse input args
@@ -251,7 +220,7 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
         } else if (strcmp(argv[i], "-ps") == 0) {
             i++; flags0Aps = true;
             try {
-                parsePS(argv[i], config->flags0A.ps, PS_SIZE, true); 
+                parseStringArg(argv[i], config->flags0A.ps, PS_SIZE, true); 
             } catch (...) {
                 goto errorArgs;
             }
@@ -259,7 +228,7 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
         } else if (strcmp(argv[i], "-rt") == 0) {
             i++; flags2Art = true;
             try {
-                parseRT(argv[i], config->flags2A.rt, RT_SIZE_PLUS_TERMINATOR, false);  // No padding, just limit to 64 characters
+                parseStringArg(argv[i], config->flags2A.rt, RT_SIZE_PLUS_TERMINATOR, true);  
             } catch (...) {
                 goto errorArgs;
             }
@@ -275,7 +244,8 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
         } 
 
     }
-    
+
+    // TODO delete 
     printProgramConfig(*config);
 
     // error check
@@ -308,7 +278,6 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
         goto errorArgs;
     }
 
-
     return;
 errorArgs:
     cerr << "Error: wrong arguments. Try using {-h|--help}" << endl;
@@ -325,23 +294,12 @@ uint16_t countCRC(uint16_t data, uint16_t magicConst) {
     // Step 1: Append 10 zeros to the input data (shift left by 10 bits)
     uint32_t extendedData = (static_cast<uint32_t>(data) << 10);
 
-    int divisorDegree = 10; 
     int divisorShift = 15;     
     uint16_t currentBit = 25;
-
-    //std::cerr << "Initial Data:    " << std::bitset<26>(extendedData) << "\n";
-    //std::cerr << "Initial Divisor:                 " << std::bitset<11>(CRC_KEY) << "\n";
 
     // Loop through the bits of extendedData
     for (int i = 0; i < 16; i++) {
         uint32_t shiftedDivisor = CRC_KEY << divisorShift; // Shift the divisor
-        
-        // Print the current state before checking
-        //std::cerr << "===================================\n";
-        //std::cerr << "Divisor Shift: " << divisorShift << "\n";
-        //std::cerr << "Current Bit:   " << currentBit << "\n";
-        //std::cerr << "Data:    " << std::bitset<26>(extendedData) << "\n";
-        //std::cerr << "Divisor: " << std::bitset<26>(shiftedDivisor) << "\n";
         
         // Check if the n-th bit is set to 1
         if ((extendedData & (1 << currentBit--)) == 0) {
@@ -351,42 +309,13 @@ uint16_t countCRC(uint16_t data, uint16_t magicConst) {
         }
 
         extendedData = extendedData ^ shiftedDivisor;
-        // std::cerr << "Result:  " << std::bitset<26>(extendedData) << "\n";
         divisorShift--;
     }
 
-    // std::cerr << "===================================\n";
-    // std::cerr << "Result:  " << std::bitset<10>(extendedData) << "\n";
-    // std::cerr << "Now, just add one of the Bulgarian constants depending on which block it is; for the first block, use Bulgarian constant A." << std::endl;
-
     extendedData = extendedData ^ magicConst;
-    // std::cerr << "FINAL RESULT (result XOR A (0xFC)):  " << std::bitset<10>(extendedData) << "\n";
 
     // Return the computed CRC value (last 10 bits as uint16_t)
-    return static_cast<uint16_t>(extendedData & 0x3FF); // Mask to get the last 10 bits
-}
-
-/** 
- * Calculate CRCs for four data blocks with specified offsets
- * @return: An array of computed CRC values for each data block
- */
-std::array<uint16_t, 4> calculateCRCs(uint16_t dataBlocks[4]) {
-
-    // Define offsets
-    uint16_t offsets[4] = {
-        CRC_BLOCK_OFFSET_A,
-        CRC_BLOCK_OFFSET_B,
-        CRC_BLOCK_OFFSET_C,
-        CRC_BLOCK_OFFSET_D
-    };
-
-    std::array<uint16_t, 4> crcResults;
-
-    for (size_t i = 0; i < 4; i++) {
-        crcResults[i] = countCRC(dataBlocks[i], offsets[i]);
-    }
-
-    return crcResults;
+    return static_cast<uint16_t>(extendedData & 0x3FF); 
 }
 
 /**
@@ -470,20 +399,17 @@ void generateOutput0a(ProgramConfig *config){
  */
 void generateOutput2a(ProgramConfig *config){
     
-    cout << endl << "Message Len: " << strlen(config->flags2A.rt) << endl;
-
     // todo check it should be maximum 16*4char  
     // todo maybe hardcode to RT_SIZE_PLUS_TERMINATOR
     uint16_t blocks = (strlen(config->flags2A.rt) + 4 / 2) / 4;
-    
 
     uint16_t row2 = 0;  
     uint16_t row3 = 0;
     uint16_t row4 = 0;
     
+    uint8_t text_segment = 0; // frame num we set in loop
 
     // SECOND ROW - FLAGS
-    uint8_t text_segment = 0; // frame num we set in loop
     row2 |= (2 << 12);  // First 4 bits (0010 represents 2A)
     row2 |= (0 << 11);  // A/B (next bit, assumed as 0 here)
     row2 |= (config->flagsCommon.tp << 10);  // TP (1 bit)
@@ -491,10 +417,12 @@ void generateOutput2a(ProgramConfig *config){
     row2 |= (config->flags2A.ab << 4);       // AB (1 bit)
 
     for (int i = 0; i < blocks; i++){
-        
+
+        // ROW 1        
         cout << "" << bitset<16>(config->flagsCommon.pi);
         cout << " " << bitset<10>(countCRC(config->flagsCommon.pi, CRC_BLOCK_OFFSET_A)) << endl;
         
+        // ROW 2       
         // text sexment 
         // 0000 -> 0001 -> 0010
         row2 &= ~0xF; // Clear the lower 4 bits of row2 (0xF is 00001111 in binary)
@@ -504,6 +432,7 @@ void generateOutput2a(ProgramConfig *config){
         cout << bitset<16>(row2);
         cout << " " << bitset<10>(countCRC(row2, CRC_BLOCK_OFFSET_B)) << endl;
         
+        // ROW 3       
         row3 = 0;
         row3 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)]) << 8);
         row3 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)+1]));
@@ -511,6 +440,7 @@ void generateOutput2a(ProgramConfig *config){
         cout << bitset<16>(row3);
         cout << " " << bitset<10>(countCRC(row3, CRC_BLOCK_OFFSET_C)) << endl;
     
+        // ROW 4       
         row4 = 0;
         row4 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)+2]) << 8);
         row4 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)+3]));
