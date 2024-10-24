@@ -128,7 +128,7 @@ void parseAfArg(const char* arg, float (&af)[AF_SIZE]) {
     std::cout << "f1 " << af[0] << " f2 " << af[1] << std::endl;
 }
 
-void parseStringArg(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
+void parsePS(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
     size_t len = std::strlen(arg);
     
     if (len > maxLength) {
@@ -148,6 +148,36 @@ void parseStringArg(const char* arg, char* dest, size_t maxLength, bool padWithS
     if (!padWithSpaces) {
         dest[len] = '\0';
     }
+}
+
+void parseRT(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
+    size_t len = std::strlen(arg);
+    
+    if (len > maxLength) {
+        throw std::invalid_argument("Input string is too long (must be " + std::to_string(maxLength) + " characters or fewer)");
+    }
+
+    std::strncpy(dest, arg, maxLength);
+
+    for (int i = len; i < RT_SIZE_PLUS_TERMINATOR-1; i++){
+        dest[i] = ' ';
+    }
+    dest[RT_SIZE_PLUS_TERMINATOR-1] = '\0';
+
+    // // TODO 
+    // // Calculate the target length for padding to the nearest multiple of 4
+    // // size_t paddedLength = ((len + 3) / 4) * 4;  // Next multiple of 4
+
+    // // If padding with spaces is required, and the length is less than paddedLength, pad with spaces
+    // if (padWithSpaces && len < paddedLength) {
+    //     for (size_t i = len; i < paddedLength; ++i) {
+    //         dest[i] = ' ';
+    //     }
+    //     dest[paddedLength] = '\0';  // Null-terminate after padding
+    // } else {
+    //     // Always null-terminate when no padding is needed
+    //     dest[len] = '\0';
+    // }
 }
 
 
@@ -221,7 +251,7 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
         } else if (strcmp(argv[i], "-ps") == 0) {
             i++; flags0Aps = true;
             try {
-                parseStringArg(argv[i], config->flags0A.ps, PS_SIZE, true); 
+                parsePS(argv[i], config->flags0A.ps, PS_SIZE, true); 
             } catch (...) {
                 goto errorArgs;
             }
@@ -229,7 +259,7 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
         } else if (strcmp(argv[i], "-rt") == 0) {
             i++; flags2Art = true;
             try {
-                parseStringArg(argv[i], config->flags2A.rt, RT_SIZE_PLUS_TERMINATOR, false);  // No padding, just limit to 64 characters
+                parseRT(argv[i], config->flags2A.rt, RT_SIZE_PLUS_TERMINATOR, false);  // No padding, just limit to 64 characters
             } catch (...) {
                 goto errorArgs;
             }
@@ -440,11 +470,54 @@ void generateOutput0a(ProgramConfig *config){
  */
 void generateOutput2a(ProgramConfig *config){
     
-    // 0020 represents 2A 
-    cout << bitset<4>(2);
-    // A/B 
-    cout << bitset<1>(0);
+    cout << endl << "Message Len: " << strlen(config->flags2A.rt) << endl;
 
+    // todo check it should be maximum 16*4char  
+    // todo maybe hardcode to RT_SIZE_PLUS_TERMINATOR
+    uint16_t blocks = (strlen(config->flags2A.rt) + 4 / 2) / 4;
+    
+
+    uint16_t row2 = 0;  
+    uint16_t row3 = 0;
+    uint16_t row4 = 0;
+    
+
+    // SECOND ROW - FLAGS
+    uint8_t text_segment = 0; // frame num we set in loop
+    row2 |= (2 << 12);  // First 4 bits (0010 represents 2A)
+    row2 |= (0 << 11);  // A/B (next bit, assumed as 0 here)
+    row2 |= (config->flagsCommon.tp << 10);  // TP (1 bit)
+    row2 |= (config->flagsCommon.pty << 5);  // PTY (5 bits)
+    row2 |= (config->flags2A.ab << 4);       // AB (1 bit)
+
+    for (int i = 0; i < blocks; i++){
+        
+        cout << "" << bitset<16>(config->flagsCommon.pi);
+        cout << " " << bitset<10>(countCRC(config->flagsCommon.pi, CRC_BLOCK_OFFSET_A)) << endl;
+        
+        // text sexment 
+        // 0000 -> 0001 -> 0010
+        row2 &= ~0xF; // Clear the lower 4 bits of row2 (0xF is 00001111 in binary)
+        row2 |= (text_segment & 0xF);  // Set the lower 4 bits of row2 to the lower 4 bits of text_segment
+        text_segment++;
+    
+        cout << bitset<16>(row2);
+        cout << " " << bitset<10>(countCRC(row2, CRC_BLOCK_OFFSET_B)) << endl;
+        
+        row3 = 0;
+        row3 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)]) << 8);
+        row3 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)+1]));
+        
+        cout << bitset<16>(row3);
+        cout << " " << bitset<10>(countCRC(row3, CRC_BLOCK_OFFSET_C)) << endl;
+    
+        row4 = 0;
+        row4 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)+2]) << 8);
+        row4 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)+3]));
+
+        cout << bitset<16>(row4);
+        cout << " " << bitset<10>(countCRC(row4, CRC_BLOCK_OFFSET_D)) << endl << endl;
+    }
 }
 
 /** 
@@ -452,7 +525,6 @@ void generateOutput2a(ProgramConfig *config){
  */
 void generateOutput(ProgramConfig *config){
 
-    
     if (config->is0A){
         // 0 means first frame 
         generateOutput0a(config);
@@ -469,22 +541,5 @@ int main(int argc, char **argv){
     argParse(argc, argv, &config);
 
     generateOutput(&config);
-
-    
-    // Define data blocks
-    uint16_t dataBlocks[4] = {
-        0b0001001000110100, // Data block 1
-        0b0000010010110000, // Data block 2
-        0b1010101001101001, // Data block 3
-        0b0101001001100001  // Data block 4
-    };
-    std::array<uint16_t, 4> crcResults = calculateCRCs(dataBlocks);
-
-    // Output the CRC results
-    for (size_t i = 0; i < crcResults.size(); i++) {
-        std::cout << "CRC for Data Block " << std::bitset<16>(dataBlocks[i]) << ": " << std::bitset<10>(crcResults[i]) << std::endl;
-    }
-    
-
 
 }
