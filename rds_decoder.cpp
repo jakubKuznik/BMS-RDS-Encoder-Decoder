@@ -9,7 +9,6 @@
 
 using namespace std;
 
-
 /**
  * Prints help and exit program with return code 1
  */
@@ -31,7 +30,8 @@ void parseBinaryString(const std::string& binaryStr, std::vector<InputMessage>& 
 
     // Ensure the input length is a multiple of 26 bits (16-bit message + 10-bit CRC)
     if (length % 26 != 0) {
-        throw std::invalid_argument("Binary string length must be a multiple of 26 bits.");
+        std::cerr << "Error: Binary string length must be a multiple of 26 bits." << std::endl;
+        goto errorArgs;
     }
 
     // Parse 26-bit chunks (16-bit message + 10-bit CRC)
@@ -47,6 +47,12 @@ void parseBinaryString(const std::string& binaryStr, std::vector<InputMessage>& 
         // Store the message and CRC in the struct
         dataChunks.push_back({message, crc});
     }
+
+    return;
+
+    errorArgs:
+        std::cerr << "Error: Invalid binary string format." << std::endl;
+        exit(1);
 }
 
 /**
@@ -55,7 +61,7 @@ void parseBinaryString(const std::string& binaryStr, std::vector<InputMessage>& 
 void parseArgs(int argc, char **argv, std::vector<InputMessage>& dataChunks) {
     if (argc < 3) {
         std::cerr << "Error: Missing required arguments." << std::endl;
-        printHelp();
+        goto errorArgs;
     }
 
     for (int i = 1; i < argc; i++) {
@@ -64,27 +70,29 @@ void parseArgs(int argc, char **argv, std::vector<InputMessage>& dataChunks) {
         } else if (strcmp(argv[i], "-b") == 0) {
             if (i + 1 < argc) {
                 std::string binaryStr = argv[++i]; // Move to the next argument for binary input
-                try {
-                    parseBinaryString(binaryStr, dataChunks);
-                } catch (const std::invalid_argument& e) {
-                    std::cerr << "Error: " << e.what() << std::endl;
-                    exit(1);
+                if (binaryStr.length() % 26 != 0) {
+                    std::cerr << "Error: Binary string length must be a multiple of 26 bits." << std::endl;
+                    goto errorArgs;
                 }
+                parseBinaryString(binaryStr, dataChunks);
             } else {
                 std::cerr << "Error: Missing binary string after -b." << std::endl;
-                exit(1);
+                goto errorArgs;
             }
         } else {
             std::cerr << "Error: Unknown argument '" << argv[i] << "'." << std::endl;
-            printHelp();
+            goto errorArgs;
         }
     }
 
     return;
+
+    errorArgs:
+        std::cerr << "Error: Wrong arguments. Try using {-h|--help}" << std::endl;
+        exit(1);
 }
 
 int main(int argc, char** argv) {
-
     std::vector<InputMessage> dataChunks;
 
     // Parse command-line arguments
@@ -99,3 +107,4 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
