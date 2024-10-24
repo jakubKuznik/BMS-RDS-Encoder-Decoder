@@ -11,11 +11,11 @@
 #include <cmath>
 #include <iomanip>  // For std::fixed and std::setprecision
 
-# define AF_SIZE 2
-# define PS_SIZE 8 
-# define RT_SIZE_PLUS_TERMINATOR 65
+#define AF_SIZE 2
+#define PS_SIZE 8 
+#define RT_SIZE_PLUS_TERMINATOR 65
 
-# define CRC_KEY 0b10110111001
+#define CRC_KEY 0b10110111001
 
 #define CRC_BLOCK_OFFSET_A 0b0011111100
 #define CRC_BLOCK_OFFSET_B 0b0110011000

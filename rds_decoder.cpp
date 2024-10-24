@@ -59,10 +59,6 @@ errorArgs:
  * Parse input args 
  */
 void parseArgs(int argc, char **argv, std::vector<InputMessage>& dataChunks) {
-  if (argc < 3) {
-    std::cerr << "Error: Missing required arguments." << std::endl;
-    goto errorArgs;
-  }
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
@@ -95,18 +91,48 @@ errorArgs:
   exit(1);
 }
 
+/**
+ * Decode input message and print it to output
+ */
+void decodeMessage(std::vector<InputMessage>& dataChunks){
+
+  if (dataChunks.size() < 4) {
+    std::cerr << "Error: Not enough data in the vector to decode." << std::endl;
+    return;
+  }
+
+  // Access the first four elements directly
+  std::cout << "First Four Parsed Data:" << std::endl;
+
+  std::cout << "Message: " << std::bitset<16>(dataChunks[0].message)
+    << ", CRC: " << std::bitset<10>(dataChunks[0].crc) << std::endl;
+
+  std::cout << "Message: " << std::bitset<16>(dataChunks[1].message)
+    << ", CRC: " << std::bitset<10>(dataChunks[1].crc) << std::endl;
+
+  std::cout << "Message: " << std::bitset<16>(dataChunks[2].message)
+    << ", CRC: " << std::bitset<10>(dataChunks[2].crc) << std::endl;
+
+  std::cout << "Message: " << std::bitset<16>(dataChunks[3].message)
+    << ", CRC: " << std::bitset<10>(dataChunks[3].crc) << std::endl;
+
+
+  // Output the rest using a loop
+  std::cout << "Parsed Data (Remaining):" << std::endl;
+  for (size_t i = 4; i < dataChunks.size(); ++i) {
+    std::cout << "Message: " << std::bitset<16>(dataChunks[i].message) 
+    << ", CRC: " << std::bitset<10>(dataChunks[i].crc) << std::endl;
+  }
+
+}
+
 int main(int argc, char** argv) {
   std::vector<InputMessage> dataChunks;
 
   // Parse command-line arguments
   parseArgs(argc, argv, dataChunks);
 
-  // Output parsed data
-  std::cout << "Parsed Data:" << std::endl;
-  for (const auto& chunk : dataChunks) {
-    std::cout << "Message: " << std::bitset<16>(chunk.message) 
-    << ", CRC: " << std::bitset<10>(chunk.crc) << std::endl;
-  }
+  decodeMessage(dataChunks);
 
   return 0;
 }
