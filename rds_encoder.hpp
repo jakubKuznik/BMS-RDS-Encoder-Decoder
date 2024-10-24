@@ -23,27 +23,27 @@
 #define CRC_BLOCK_OFFSET_D 0b0110110100
 
 typedef struct {
-    unsigned int pi;  
-    unsigned int pty; 
-    bool tp;          
+  unsigned int pi;  
+  unsigned int pty; 
+  bool tp;          
 } FlagsCommon;
 
 typedef struct {
-    bool ms;                    
-    bool ta;                     
-    float af[AF_SIZE];       
-    char ps[PS_SIZE]; 
+  bool ms;                    
+  bool ta;                     
+  float af[AF_SIZE];       
+  char ps[PS_SIZE]; 
 } Flags0A;
 
 typedef struct {
-    char rt[RT_SIZE_PLUS_TERMINATOR];   
-    bool ab;          
+  char rt[RT_SIZE_PLUS_TERMINATOR];   
+  bool ab;          
 } Flags2A;
 
 typedef struct {
-    bool is0A;       
-    bool is2A;       
-    FlagsCommon flagsCommon;
-    Flags0A flags0A;  
-    Flags2A flags2A;  
+  bool is0A;       
+  bool is2A;       
+  FlagsCommon flagsCommon;
+  Flags0A flags0A;  
+  Flags2A flags2A;  
 } ProgramConfig;
