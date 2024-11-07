@@ -16,6 +16,7 @@
 #define CRC_BITS 10
 #define BLOCK_BITS 26 
 #define H_ROWS 26
+#define H_COLS 10
 
 #define CRC_KEY 0b10110111001
 
@@ -28,6 +29,19 @@ typedef struct{
   uint16_t message;  
   uint16_t crc;  // CRC will be only on lower 10 bits 
 } InputMessage;
+
+const std::bitset<H_ROWS> H_TRANSPOSED[H_COLS] = {
+    0b10000000001011011100111101,  // Column 0 of H
+    0b01000000000101101110111110,  // Column 1 of H
+    0b00100000000010110111011111,  // Column 2 of H
+    0b00010000000001010001110101,  // Column 3 of H
+    0b00001000000000111111100111,  // Column 4 of H
+    0b00000100000000010011100111,  // Column 5 of H
+    0b00000010000000011010101101,  // Column 6 of H
+    0b00000001000000011011101110,  // Column 7 of H
+    0b00000000100000001101110111,  // Column 8 of H
+    0b00000000010000001000000011   // Column 9 of H
+};
 
 const std::bitset<H_ROWS> H[H_ROWS] = {
   0b1000000000,
