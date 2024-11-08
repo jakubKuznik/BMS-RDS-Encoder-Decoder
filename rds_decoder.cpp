@@ -184,6 +184,9 @@ bool matrixMultiplication(const std::bitset<H_ROWS>& data) {
 
  */
 void decodeMessage(std::vector<InputMessage>& dataChunks){
+  
+  // ordered data 
+  std::vector<InputMessage> orderedData;
 
   if (dataChunks.size() < 4) {
     std::cerr << "Error: Not enough data in the vector to decode." << std::endl;
@@ -200,10 +203,12 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
   // also the messages inside block ABCD, BACD, DBCA 
   // Process each block of 4 messages
   std::bitset<H_ROWS> concatenatedData;
-  std::bitset<CRC_BITS> invertedCrc; 
+  std::bitset<CRC_BITS> invertedCrc;
+  bool is2A = false;
+  bool is0A = false;
   for (size_t i = 0; i < (dataChunks.size()/4);i++) {
-    std::cout << "Message " << i << std::endl;
     
+    std::cout << "Message " << i << std::endl;
     // Loop over the messages in the current block
     std::bitset<H_ROWS> aMessage, bMessage, cMessage, dMessage; 
     bool aUsed = false, bUsed = false, cUsed = false, dUsed = false;
@@ -252,6 +257,26 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
       }
       goto error_wrong_message;
     }
+
+    // Check the first 4 bits of bMessage if it's a "good block"
+    std::string group = bMessage.to_string().substr(0, 4);
+    if (group == "0000") {
+      cout << "First 4 bits of bMessage are 0000" << endl;
+      if (is2A == true){
+        goto error_multiple_groups;
+      }
+      is0A = true;
+    } else if (group == "0010") {
+      cout << "First 4 bits of bMessage are 0010" << endl;
+      if (is0A == true){
+        goto error_multiple_groups;
+      }
+      is2A = true;
+    } else {
+      goto error_unsuported_format;
+    }
+
+
   }
 
 
@@ -259,6 +284,12 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
 
 error_wrong_message:
   cerr << "Wrong message" << endl;
+  exit(2);
+error_multiple_groups:
+  cerr << "Error multiple groups 0A 2A" << endl;
+  exit(2);
+error_unsuported_format:
+  cerr << "Unsuported format" << endl;
   exit(2);
     
 
