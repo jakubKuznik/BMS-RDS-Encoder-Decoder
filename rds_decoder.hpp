@@ -25,6 +25,10 @@
 #define CRC_BLOCK_OFFSET_C 0b0101101000
 #define CRC_BLOCK_OFFSET_D 0b0110110100
 
+#define AF_SIZE 2
+#define PS_SIZE 8 
+#define RT_SIZE_PLUS_TERMINATOR 65
+
 typedef struct{
   uint16_t message;  
   uint16_t crc;  // CRC will be only on lower 10 bits 
@@ -42,3 +46,31 @@ const std::bitset<H_ROWS> H_TRANSPOSED[H_COLS] = {
   0b00000000100111110110011111,
   0b00000000010011111011001111
 };
+
+typedef struct {
+  unsigned int pi;  
+  unsigned int pty; 
+  bool tp;          
+} FlagsCommon;
+
+typedef struct {
+  bool ms;                    
+  bool ta;                     
+  float af[AF_SIZE];       
+  char ps[PS_SIZE]; 
+} Flags0A;
+
+typedef struct {
+  char rt[RT_SIZE_PLUS_TERMINATOR];   
+  bool ab;          
+} Flags2A;
+
+typedef struct {
+  bool is0A;       
+  bool is2A;       
+  FlagsCommon flagsCommon;
+  Flags0A flags0A;  
+  Flags2A flags2A;  
+} MessageProperties;
+
+

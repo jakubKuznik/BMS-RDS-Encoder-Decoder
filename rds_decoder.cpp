@@ -253,12 +253,15 @@ void orderMessage(std::vector<InputMessage>& dataChunks, std::vector<uint16_t>& 
       orderedData.push_back(static_cast<uint16_t>(dMessage.to_ulong()));
       is0A = true;
     } else if (group == "0010") {
+      // todo 2row last 4 bits 
+      // decode the num and story to specific index
       cout << "First 4 bits of bMessage are 0010" << endl;
       if (is0A == true){
         goto error_multiple_groups;
       }
       is2A = true;
     } else {
+      
       goto error_unsuported_format;
     }
 
@@ -279,45 +282,104 @@ error_unsuported_format:
 }
 
 /**
- * Decode input message and print it to output
-- **Program Identification (PI)**: Output as a 16-bit unsigned integer.
-- **Program Type (PTY)**: Output as a 5-bit unsigned integer.
-- **Traffic Program (TP)**: Output as `TP: 1` or `TP: 0`.
-- **Music/Speech (MS)**: Output as `MS == 1: Music` or `MS == 0: Speech`.
-- **Traffic Announcement (TA)**: Output as `TA == 1: Active` or `TA == 0: Inactive`.
-- **Alternative Frequencies (AF)**: Output as two frequency values (e.g., `AF: 104, 98`).
-- **Program Service (PS)**: Output the station name (8-character string).
+ *
+ * Program Identification (PI): Output as a 16-bit unsigned integer.
+ * Program Type (PTY): Output as a 5-bit unsigned integer.
+ * Traffic Program (TP): Output as TP: 1 or TP: 0.
+ * Music/Speech (MS): Output as MS == 1: Music or MS == 0: Speech.
+ * Traffic Announcement (TA): Output as TA == 1: Active or TA == 0: Inactive.
+ * Alternative Frequencies (AF): Output as two frequency values (e.g., AF: 104, 98).
+ * Program Service (PS): Output the station name (8-character string).
+ * 
+ * PI: 4660
+ * GT: 0A
+ * TP: 1
+ * PTY: 5
+ * TA: Active
+ * MS: Speech
+ * DI: 1
+ * AF: 104.5, 98.0
+ * PS: "RadioXYZ"
+*/
+void decode0A(std::vector<uint16_t>& orderedData){
 
+  MessageProperties messageProperties;
 
+  // Loop over the messages in the current block (4 messages per block)
+  auto& chunkA = orderedData[0];
+  auto& chunkB = orderedData[1];
+  auto& chunkC = orderedData[2];
+  auto& chunkD = orderedData[3];
 
-- **Program Identification (PI)**: Output as a 16-bit unsigned integer.
-- **Program Type (PTY)**: Output as a 5-bit unsigned integer.
-- **Traffic Program (TP)**: Output as `TP: 1` or `TP: 0`.
-- **Radio Text A/B flag (A/B)**: Output as `RT A/B: 0` or `RT A/B: 1`.
-- **Radio Text (RT)**: Output the radio text string (64 characters maximum). If shorter, the encoder will add padding with spaces.
+  // here gets first 16 bits from chunkA and first 4 bits from chunkB   
+  messageProperties.flagsCommon.pi = chunkA;
+  uint16_t group = chunkB >> 12; 
+    
+  if (group == 0b0000) {
+    messageProperties.is0A = true;
+  } 
+  else{
+    goto error_in_data;  
+  }
 
- */
+  uint8_t ab;
+  // Get the 5th bit from chunkB
+  ab = (chunkB >> 10) & 0b1;
+  // todo continue here 
+  // Iterate over the data in blocks of 4 messages
+  for (size_t i = 4; i < orderedData.size(); i += 4) {
+  
+  }
+
+  return;
+
+error_in_data:
+  cerr << "Wrong data in blocks";
+  exit(2);
+
+}
+
+/**
+ * 
+ * Program Identification (PI)**: Output as a 16-bit unsigned integer.
+ * Program Type (PTY)**: Output as a 5-bit unsigned integer.
+ * Traffic Program (TP)**: Output as `TP: 1` or `TP: 0`.
+ * Radio Text A/B flag (A/B)**: Output as `RT A/B: 0` or `RT A/B: 1`.
+ * Radio Text (RT)**: Output the radio text string (64 characters maximum). If shorter, the encoder will add padding with spaces.
+ * 
+ * PI: 4660
+ * GT: 2A
+ * TP: 1
+ * PTY: 5
+ * A/B: 0
+ * RT: "Now Playing: Song Title by Artist"
+ * 
+*/
+void decode2A(std::vector<uint16_t>& orderedData){
+
+}
+
+/**
+ * decode input message  
+*/
 void decodeMessage(std::vector<InputMessage>& dataChunks){
   
-  // ordered data 
   std::vector<uint16_t> orderedData;
 
   orderMessage(dataChunks, orderedData);
 
-
-
-  cout << "Ordered Data in Bits:" << endl;
-  for (const auto& data : orderedData) {
-    std::bitset<16> binaryData(data); // Converts uint16_t data to 16-bit binary
-    cout << binaryData << endl; 
-  }
-  cout << endl;
-
+  // The second block in the orderedData
+  uint16_t secondValue = orderedData[1]; 
+  uint16_t firstFourBits = secondValue >> 12; 
+        
+  // Check if the first 4 bits are 0000 or 0010
+  if (firstFourBits == 0b0000) {
+    decode0A(orderedData);
+  } else if (firstFourBits == 0b0010) {
+    decode2A(orderedData);
+  } 
 
   return;
-
-    
-
 }
 
 int main(int argc, char** argv) {
