@@ -134,12 +134,37 @@ uint16_t invertCRC(uint16_t data, uint16_t magicConst){
   return data ^ magicConst;
 }
 
+/** 
+ * Returns true if there were no error find in data
+ */
+bool matrixMultiplication(const std::bitset<H_ROWS>& data) {
+  
+  std::bitset<H_ROWS> result = data & H_TRANSPOSED[0];
+  std::cout << "Data   " << data << endl;
+  std::cout << "Matrix " << H_TRANSPOSED[0] << endl;
+  std::cout << "AND    " << result << std::endl;
+  std::cout << "XOR    " << result << std::endl;
 
-void matrixMultiplication(const std::bitset<H_ROWS>& data) {
-    for (int i = 0; i < H_COLS; ++i) {
-        std::bitset<H_ROWS> result = data ^ H_TRANSPOSED[i];
-        std::cout << "Result with column " << i << ": " << result << std::endl;
+  for (int i = 1; i < H_COLS; ++i) {
+    std::bitset<H_ROWS> oneMatrix = data & H_TRANSPOSED[i];
+    // now in the result xor every bit 1001 = 0   1110 = 1
+    // i mean here: 
+    
+    // XOR all bits inside oneMatrix
+    bool xorResult = 0; // Start with a 0
+    for (int j = 0; j < H_ROWS; ++j) {
+        xorResult ^= oneMatrix[j];  // XOR all the bits
     }
+
+    std::cout << "Res    " << xorResult << std::endl;
+    
+    // result should always be 0
+    if (xorResult == true){
+      return false;
+    }
+    
+  }
+  return true;
 }
 
 /**
@@ -152,42 +177,51 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
     return;
   }
 
-
   // blocks can be in wrong order 2. 1. 3. 4 
   // also the messages inside block ABCD, BACD, DBCA 
   // Process each block of 4 messages
-  bool a_used = false, b_used = false, c_used = false, d_used = false;
+  bool aUsed = false, bUsed = false, cUsed = false, dUsed = false;
+  std::bitset<H_ROWS> concatenated_data;
   for (size_t i = 0; i < dataChunks.size(); i += 4) {
-      std::cout << "Block " << (i / 4 + 1) << std::endl;
+    std::cout << "Block " << (i / 4 + 1) << std::endl;
 
-      // Loop over the messages in the current block
-      for (int j = 0; j < 4 && (i + j) < dataChunks.size(); ++j) {
-          auto& chunk = dataChunks[i + j];
-            
-          // Compute the inverted CRCs with different offsets
-          std::bitset<CRC_BITS> inverted_crc_a = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_A);
-          std::bitset<CRC_BITS> inverted_crc_b = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_B);
-          std::bitset<CRC_BITS> inverted_crc_c = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_C);
-          std::bitset<CRC_BITS> inverted_crc_d = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_D);
+    // Loop over the messages in the current block
+    for (int j = 0; j < 4 && (i + j) < dataChunks.size(); ++j) {
+      auto& chunk = dataChunks[i + j];
 
-          // Concatenate message and inverted CRC (using offset A) into a single 26-bit bitset
-          std::bitset<H_ROWS> concatenated_data = 
-            (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(inverted_crc_a.to_ulong());
-
-          // Print message, CRC, and each inverted CRC with its offset
-          std::cout << "Message: " << std::bitset<BLOCK_BITS>(chunk.message)
-                    << ", CRC: " << std::bitset<CRC_BITS>(chunk.crc)
-                    << ", Inverted CRC A: " << inverted_crc_a
-                    << ", Inverted CRC B: " << inverted_crc_b
-                    << ", Inverted CRC C: " << inverted_crc_c
-                    << ", Inverted CRC D: " << inverted_crc_d << std::endl;
-
-          // Perform matrix multiplication with concatenated data (using inverted CRC A)
-          matrixMultiplication(concatenated_data);
+      if (aUsed == false){
+        std::bitset<CRC_BITS> inverted_crc_a = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_A);
+        std::bitset<H_ROWS> concatenated_data = 
+          (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(inverted_crc_a.to_ulong());
+        
+        if (matrixMultiplication(concatenated_data) == true){
+          cout << "good block" << endl;
+        }
+        else {
+          cout << "bad block" << endl;
           break;
+        }
       }
-  }
+            
+      // Compute the inverted CRCs with different offsets
+      std::bitset<CRC_BITS> inverted_crc_b = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_B);
+      std::bitset<CRC_BITS> inverted_crc_c = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_C);
+      std::bitset<CRC_BITS> inverted_crc_d = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_D);
 
+      // Concatenate message and inverted CRC (using offset A) into a single 26-bit bitset
+
+      // Print message, CRC, and each inverted CRC with its offset
+      std::cout << "Message: " << std::bitset<BLOCK_BITS>(chunk.message)
+        << ", CRC: " << std::bitset<CRC_BITS>(chunk.crc)
+        //<< ", Inverted CRC A: " << inverted_crc_a
+        << ", Inverted CRC B: " << inverted_crc_b
+        << ", Inverted CRC C: " << inverted_crc_c
+        << ", Inverted CRC D: " << inverted_crc_d << std::endl;
+      
+      // here order the data
+      // Perform matrix multiplication with concatenated data (using inverted CRC A)
+    }
+  }
 }
 
 int main(int argc, char** argv) {
