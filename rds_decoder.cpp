@@ -199,67 +199,55 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
   // blocks can be in wrong order 2. 1. 3. 4 
   // also the messages inside block ABCD, BACD, DBCA 
   // Process each block of 4 messages
-  bool aUsed = false, bUsed = false, cUsed = false, dUsed = false;
   std::bitset<H_ROWS> concatenatedData;
   std::bitset<CRC_BITS> invertedCrc; 
   for (size_t i = 0; i < (dataChunks.size()/4);i++) {
     std::cout << "Message " << i << std::endl;
-
+    
     // Loop over the messages in the current block
     std::bitset<H_ROWS> aMessage, bMessage, cMessage, dMessage; 
+    bool aUsed = false, bUsed = false, cUsed = false, dUsed = false;
     for (size_t j = 0; j < 4 ; j++) {
       auto& chunk = dataChunks[(i*4) + j];
       cout << "data: " << (i*4) + j << " " << std::bitset<16>(chunk.message) << " " << std::bitset<10>(chunk.crc) << " ";
 
       if (aUsed == false){
         invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_A);
-        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) 
-                          | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
-          aMessage = concatenatedData;
-          aUsed = true;
-          continue;
+          aMessage = concatenatedData; aUsed = true; continue;
         }
       }
       
       if (bUsed == false){
         invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_B);
-        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) 
-                          | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
-          bMessage = concatenatedData;
-          bUsed = true;
-          continue;
+          bMessage = concatenatedData; bUsed = true;continue;
         }
       }
       
       if (cUsed == false){
         invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_C);
-        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) 
-                          | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
-          cMessage = concatenatedData;
-          cUsed = true;
-          continue;
+          cMessage = concatenatedData; cUsed = true; continue;
         }
       }
       
       if (dUsed == false){
         invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_D);
-        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) 
-                          | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
-          dMessage = concatenatedData;
-          dUsed = true;
-          continue;
+          dMessage = concatenatedData; dUsed = true; continue;
         }
       }
       goto error_wrong_message;
