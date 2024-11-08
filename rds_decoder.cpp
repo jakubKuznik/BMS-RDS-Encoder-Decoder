@@ -140,23 +140,20 @@ uint16_t invertCRC(uint16_t data, uint16_t magicConst){
 bool matrixMultiplication(const std::bitset<H_ROWS>& data) {
   
   std::bitset<H_ROWS> result = data & H_TRANSPOSED[0];
-  std::cout << "Data   " << data << endl;
-  std::cout << "Matrix " << H_TRANSPOSED[0] << endl;
-  std::cout << "AND    " << result << std::endl;
-  std::cout << "XOR    " << result << std::endl;
+  //std::cout << "Data   " << data << endl;
+  //std::cout << "Matrix " << H_TRANSPOSED[0] << endl;
+  //std::cout << "AND    " << result << std::endl;
+  //std::cout << "XOR    " << result << std::endl;
 
   for (int i = 1; i < H_COLS; ++i) {
     std::bitset<H_ROWS> oneMatrix = data & H_TRANSPOSED[i];
-    // now in the result xor every bit 1001 = 0   1110 = 1
-    // i mean here: 
-    
     // XOR all bits inside oneMatrix
     bool xorResult = 0; // Start with a 0
     for (int j = 0; j < H_ROWS; ++j) {
         xorResult ^= oneMatrix[j];  // XOR all the bits
     }
 
-    std::cout << "Res    " << xorResult << std::endl;
+    //std::cout << "Res    " << xorResult << std::endl;
     
     // result should always be 0
     if (xorResult == true){
@@ -169,59 +166,114 @@ bool matrixMultiplication(const std::bitset<H_ROWS>& data) {
 
 /**
  * Decode input message and print it to output
+- **Program Identification (PI)**: Output as a 16-bit unsigned integer.
+- **Program Type (PTY)**: Output as a 5-bit unsigned integer.
+- **Traffic Program (TP)**: Output as `TP: 1` or `TP: 0`.
+- **Music/Speech (MS)**: Output as `MS == 1: Music` or `MS == 0: Speech`.
+- **Traffic Announcement (TA)**: Output as `TA == 1: Active` or `TA == 0: Inactive`.
+- **Alternative Frequencies (AF)**: Output as two frequency values (e.g., `AF: 104, 98`).
+- **Program Service (PS)**: Output the station name (8-character string).
+
+
+
+- **Program Identification (PI)**: Output as a 16-bit unsigned integer.
+- **Program Type (PTY)**: Output as a 5-bit unsigned integer.
+- **Traffic Program (TP)**: Output as `TP: 1` or `TP: 0`.
+- **Radio Text A/B flag (A/B)**: Output as `RT A/B: 0` or `RT A/B: 1`.
+- **Radio Text (RT)**: Output the radio text string (64 characters maximum). If shorter, the encoder will add padding with spaces.
+
  */
 void decodeMessage(std::vector<InputMessage>& dataChunks){
 
   if (dataChunks.size() < 4) {
     std::cerr << "Error: Not enough data in the vector to decode." << std::endl;
-    return;
+    exit(2);
   }
+  else if (dataChunks.size() % 4 != 0){
+    std::cerr << "Error: Not enough data blocks." << std::endl;
+    exit(2);
+  }
+
+  cout << "Data chunks: " << dataChunks.size() << endl;
 
   // blocks can be in wrong order 2. 1. 3. 4 
   // also the messages inside block ABCD, BACD, DBCA 
   // Process each block of 4 messages
   bool aUsed = false, bUsed = false, cUsed = false, dUsed = false;
-  std::bitset<H_ROWS> concatenated_data;
-  for (size_t i = 0; i < dataChunks.size(); i += 4) {
-    std::cout << "Block " << (i / 4 + 1) << std::endl;
+  std::bitset<H_ROWS> concatenatedData;
+  std::bitset<CRC_BITS> invertedCrc; 
+  for (size_t i = 0; i < (dataChunks.size()/4);i++) {
+    std::cout << "Message " << i << std::endl;
 
     // Loop over the messages in the current block
-    for (int j = 0; j < 4 && (i + j) < dataChunks.size(); ++j) {
-      auto& chunk = dataChunks[i + j];
+    std::bitset<H_ROWS> aMessage, bMessage, cMessage, dMessage; 
+    for (size_t j = 0; j < 4 ; j++) {
+      auto& chunk = dataChunks[(i*4) + j];
+      cout << "data: " << (i*4) + j << " " << std::bitset<16>(chunk.message) << " " << std::bitset<10>(chunk.crc) << " ";
 
       if (aUsed == false){
-        std::bitset<CRC_BITS> inverted_crc_a = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_A);
-        std::bitset<H_ROWS> concatenated_data = 
-          (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(inverted_crc_a.to_ulong());
+        invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_A);
+        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) 
+                          | std::bitset<H_ROWS>(invertedCrc.to_ulong());
         
-        if (matrixMultiplication(concatenated_data) == true){
+        if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
-        }
-        else {
-          cout << "bad block" << endl;
-          break;
+          aMessage = concatenatedData;
+          aUsed = true;
+          continue;
         }
       }
-            
-      // Compute the inverted CRCs with different offsets
-      std::bitset<CRC_BITS> inverted_crc_b = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_B);
-      std::bitset<CRC_BITS> inverted_crc_c = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_C);
-      std::bitset<CRC_BITS> inverted_crc_d = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_D);
-
-      // Concatenate message and inverted CRC (using offset A) into a single 26-bit bitset
-
-      // Print message, CRC, and each inverted CRC with its offset
-      std::cout << "Message: " << std::bitset<BLOCK_BITS>(chunk.message)
-        << ", CRC: " << std::bitset<CRC_BITS>(chunk.crc)
-        //<< ", Inverted CRC A: " << inverted_crc_a
-        << ", Inverted CRC B: " << inverted_crc_b
-        << ", Inverted CRC C: " << inverted_crc_c
-        << ", Inverted CRC D: " << inverted_crc_d << std::endl;
       
-      // here order the data
-      // Perform matrix multiplication with concatenated data (using inverted CRC A)
+      if (bUsed == false){
+        invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_B);
+        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) 
+                          | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        
+        if (matrixMultiplication(concatenatedData) == true){
+          cout << "good block" << endl;
+          bMessage = concatenatedData;
+          bUsed = true;
+          continue;
+        }
+      }
+      
+      if (cUsed == false){
+        invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_C);
+        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) 
+                          | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        
+        if (matrixMultiplication(concatenatedData) == true){
+          cout << "good block" << endl;
+          cMessage = concatenatedData;
+          cUsed = true;
+          continue;
+        }
+      }
+      
+      if (dUsed == false){
+        invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_D);
+        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) 
+                          | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        
+        if (matrixMultiplication(concatenatedData) == true){
+          cout << "good block" << endl;
+          dMessage = concatenatedData;
+          dUsed = true;
+          continue;
+        }
+      }
+      goto error_wrong_message;
     }
   }
+
+
+  return;
+
+error_wrong_message:
+  cerr << "Wrong message" << endl;
+  exit(2);
+    
+
 }
 
 int main(int argc, char** argv) {
