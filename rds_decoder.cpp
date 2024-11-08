@@ -164,30 +164,11 @@ bool matrixMultiplication(const std::bitset<H_ROWS>& data) {
   return true;
 }
 
-/**
- * Decode input message and print it to output
-- **Program Identification (PI)**: Output as a 16-bit unsigned integer.
-- **Program Type (PTY)**: Output as a 5-bit unsigned integer.
-- **Traffic Program (TP)**: Output as `TP: 1` or `TP: 0`.
-- **Music/Speech (MS)**: Output as `MS == 1: Music` or `MS == 0: Speech`.
-- **Traffic Announcement (TA)**: Output as `TA == 1: Active` or `TA == 0: Inactive`.
-- **Alternative Frequencies (AF)**: Output as two frequency values (e.g., `AF: 104, 98`).
-- **Program Service (PS)**: Output the station name (8-character string).
-
-
-
-- **Program Identification (PI)**: Output as a 16-bit unsigned integer.
-- **Program Type (PTY)**: Output as a 5-bit unsigned integer.
-- **Traffic Program (TP)**: Output as `TP: 1` or `TP: 0`.
-- **Radio Text A/B flag (A/B)**: Output as `RT A/B: 0` or `RT A/B: 1`.
-- **Radio Text (RT)**: Output the radio text string (64 characters maximum). If shorter, the encoder will add padding with spaces.
-
+/** 
+ * Order message and returns orderedData 
  */
-void decodeMessage(std::vector<InputMessage>& dataChunks){
+void orderMessage(std::vector<InputMessage>& dataChunks, std::vector<uint16_t>& orderedData){
   
-  // ordered data 
-  std::vector<InputMessage> orderedData;
-
   if (dataChunks.size() < 4) {
     std::cerr << "Error: Not enough data in the vector to decode." << std::endl;
     exit(2);
@@ -222,7 +203,8 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
-          aMessage = concatenatedData; aUsed = true; continue;
+
+          aMessage = chunk.message; aUsed = true; continue;
         }
       }
       
@@ -232,7 +214,7 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
-          bMessage = concatenatedData; bUsed = true;continue;
+          bMessage = chunk.message; bUsed = true;continue;
         }
       }
       
@@ -242,7 +224,7 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
-          cMessage = concatenatedData; cUsed = true; continue;
+          cMessage = chunk.message; cUsed = true; continue;
         }
       }
       
@@ -252,7 +234,7 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
-          dMessage = concatenatedData; dUsed = true; continue;
+          dMessage = chunk.message; dUsed = true; continue;
         }
       }
       goto error_wrong_message;
@@ -265,6 +247,10 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
       if (is2A == true){
         goto error_multiple_groups;
       }
+      orderedData.push_back(static_cast<uint16_t>(aMessage.to_ulong()));
+      orderedData.push_back(static_cast<uint16_t>(bMessage.to_ulong()));
+      orderedData.push_back(static_cast<uint16_t>(cMessage.to_ulong()));
+      orderedData.push_back(static_cast<uint16_t>(dMessage.to_ulong()));
       is0A = true;
     } else if (group == "0010") {
       cout << "First 4 bits of bMessage are 0010" << endl;
@@ -276,9 +262,7 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
       goto error_unsuported_format;
     }
 
-
   }
-
 
   return;
 
@@ -291,6 +275,47 @@ error_multiple_groups:
 error_unsuported_format:
   cerr << "Unsuported format" << endl;
   exit(2);
+
+}
+
+/**
+ * Decode input message and print it to output
+- **Program Identification (PI)**: Output as a 16-bit unsigned integer.
+- **Program Type (PTY)**: Output as a 5-bit unsigned integer.
+- **Traffic Program (TP)**: Output as `TP: 1` or `TP: 0`.
+- **Music/Speech (MS)**: Output as `MS == 1: Music` or `MS == 0: Speech`.
+- **Traffic Announcement (TA)**: Output as `TA == 1: Active` or `TA == 0: Inactive`.
+- **Alternative Frequencies (AF)**: Output as two frequency values (e.g., `AF: 104, 98`).
+- **Program Service (PS)**: Output the station name (8-character string).
+
+
+
+- **Program Identification (PI)**: Output as a 16-bit unsigned integer.
+- **Program Type (PTY)**: Output as a 5-bit unsigned integer.
+- **Traffic Program (TP)**: Output as `TP: 1` or `TP: 0`.
+- **Radio Text A/B flag (A/B)**: Output as `RT A/B: 0` or `RT A/B: 1`.
+- **Radio Text (RT)**: Output the radio text string (64 characters maximum). If shorter, the encoder will add padding with spaces.
+
+ */
+void decodeMessage(std::vector<InputMessage>& dataChunks){
+  
+  // ordered data 
+  std::vector<uint16_t> orderedData;
+
+  orderMessage(dataChunks, orderedData);
+
+
+
+  cout << "Ordered Data in Bits:" << endl;
+  for (const auto& data : orderedData) {
+    std::bitset<16> binaryData(data); // Converts uint16_t data to 16-bit binary
+    cout << binaryData << endl; 
+  }
+  cout << endl;
+
+
+  return;
+
     
 
 }
