@@ -91,8 +91,6 @@ errorArgs:
   exit(1);
 }
 
-
-
 /**
  * Count CRC of data
  * @param data: The input data for CRC calculation
@@ -112,7 +110,6 @@ uint16_t countCRC(uint16_t data, uint16_t magicConst) {
         
     // Check if the n-th bit is set to 1
     if ((extendedData & (1 << currentBit--)) == 0) {
-      //cerr << "SKIP" << endl;
       divisorShift--;
       continue;
     }
@@ -127,9 +124,6 @@ uint16_t countCRC(uint16_t data, uint16_t magicConst) {
   return static_cast<uint16_t>(extendedData & 0x3FF); 
 }
 
-/**
- * 
- */
 uint16_t invertCRC(uint16_t data, uint16_t magicConst){
   return data ^ magicConst;
 }
@@ -139,12 +133,6 @@ uint16_t invertCRC(uint16_t data, uint16_t magicConst){
  */
 bool matrixMultiplication(const bitset<H_ROWS>& data) {
   
-  bitset<H_ROWS> result = data & H_TRANSPOSED[0];
-  //cout << "Data   " << data << endl;
-  //cout << "Matrix " << H_TRANSPOSED[0] << endl;
-  //cout << "AND    " << result << endl;
-  //cout << "XOR    " << result << endl;
-
   for (int i = 1; i < H_COLS; ++i) {
     bitset<H_ROWS> oneMatrix = data & H_TRANSPOSED[i];
     // XOR all bits inside oneMatrix
@@ -153,13 +141,10 @@ bool matrixMultiplication(const bitset<H_ROWS>& data) {
         xorResult ^= oneMatrix[j];  // XOR all the bits
     }
 
-    //cout << "Res    " << xorResult << endl;
-    
     // result should always be 0
     if (xorResult == true){
       return false;
     }
-    
   }
   return true;
 }
@@ -178,8 +163,6 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
     exit(2);
   }
 
-  cout << "Data chunks: " << dataChunks.size() << endl;
-
   orderedData.resize(dataChunks.size());
 
   // blocks can be in wrong order 2. 1. 3. 4 
@@ -191,21 +174,16 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
   bool is0A = false;
   for (size_t i = 0; i < (dataChunks.size()/4);i++) {
     
-    cout << "Message " << i << endl;
     // Loop over the messages in the current block
     bitset<H_ROWS> aMessage, bMessage, cMessage, dMessage; 
     bool aUsed = false, bUsed = false, cUsed = false, dUsed = false;
     for (size_t j = 0; j < 4 ; j++) {
       auto& chunk = dataChunks[(i*4) + j];
-      cout << "data: " << (i*4) + j << " " << bitset<16>(chunk.message) << " " << bitset<10>(chunk.crc) << " ";
-
       if (aUsed == false){
         invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_A);
         concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
-          cout << "good block" << endl;
-
           aMessage = chunk.message; aUsed = true; continue;
         }
       }
@@ -215,7 +193,6 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
         concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
-          cout << "good block" << endl;
           bMessage = chunk.message; bUsed = true;continue;
         }
       }
@@ -225,7 +202,6 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
         concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
-          cout << "good block" << endl;
           cMessage = chunk.message; cUsed = true; continue;
         }
       }
@@ -235,7 +211,6 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
         concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
-          cout << "good block" << endl;
           dMessage = chunk.message; dUsed = true; continue;
         }
       }
@@ -244,6 +219,7 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
 
     uint16_t help = static_cast<uint16_t>(bMessage.to_ulong());
     if (((help >> 12) & 0b1111) == 0b0000) {
+      is0A = true;
       if (is2A == true){
         goto error_multiple_groups;
       }
@@ -251,19 +227,15 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
       orderedData[(i * 4) + 1] = static_cast<uint16_t>(bMessage.to_ulong()); 
       orderedData[(i * 4) + 2] = static_cast<uint16_t>(cMessage.to_ulong()); 
       orderedData[(i * 4) + 3] = static_cast<uint16_t>(dMessage.to_ulong()); 
-      is0A = true;
     } else if (((help >> 12) & 0b1111) == 0b0010) {
-        
+        is2A = true;
         if (is0A == true){
             goto error_multiple_groups;
         }
-
-        cout << (help & 0b1111) << endl;
         orderedData[((help & 0b1111) * 4) + 0] = static_cast<uint16_t>(aMessage.to_ulong()); 
         orderedData[((help & 0b1111) * 4) + 1] = static_cast<uint16_t>(bMessage.to_ulong()); 
         orderedData[((help & 0b1111) * 4) + 2] = static_cast<uint16_t>(cMessage.to_ulong()); 
         orderedData[((help & 0b1111) * 4) + 3] = static_cast<uint16_t>(dMessage.to_ulong()); 
-        is2A = true;
     } else {
       goto error_unsuported_format;
     }
@@ -280,18 +252,13 @@ error_multiple_groups:
 error_unsuported_format:
   cerr << "Unsuported format" << endl;
   exit(2);
-
 }
 
 /**
  * Returns frequency from 8bits 
  */
 float parseBinaryToFrequency(uint8_t binaryValue) {
-  // Check if binaryValue is within the valid range (0-255)
-  if (binaryValue > 255) {
-    throw invalid_argument("Binary value out of range for frequency.");
-  }
-
+  
   // Calculate the frequency: divide by 10 and add 87.5 MHz
   float frequency = 87.5 + (binaryValue / 10.0);
 
@@ -363,44 +330,24 @@ void decode0A(vector<uint16_t>& orderedData){
       goto error_inconsistent_blocks;
 
     // row 2 
-    if (group != (chunkB >> 12)){
-      cout << "group ";
+    if (group != (chunkB >> 12))
       goto error_inconsistent_blocks;
-    }
-    if (ab != ((chunkB >> 11) & 0b1)){
-      cout << "ab ";
+    if (ab != ((chunkB >> 11) & 0b1))
       goto error_inconsistent_blocks;
-    }
-    if (messageProperties.flagsCommon.tp != (((chunkB >> 10) &0b1))){
-      cout << "tp ";
+    if (messageProperties.flagsCommon.tp != (((chunkB >> 10) &0b1)))
       goto error_inconsistent_blocks;
-    }
-    if (messageProperties.flagsCommon.pty != (((chunkB >> 5) &0b11111))){
-      cout << "pty ";
+    if (messageProperties.flagsCommon.pty != (((chunkB >> 5) &0b11111)))
       goto error_inconsistent_blocks;
-    }
-    if (messageProperties.flags0A.ta != ((chunkB >> 4) &0b1)){
-      cout << "ta ";
+    if (messageProperties.flags0A.ta != ((chunkB >> 4) &0b1))
       goto error_inconsistent_blocks;
-    }
-    if (messageProperties.flags0A.ms != ((chunkB >> 3) &0b1)){
-      cout << "ms ";
+    if (messageProperties.flags0A.ms != ((chunkB >> 3) &0b1))
       goto error_inconsistent_blocks;
-    }
-    if (di != ((chunkB >> 2) &0b1)){
-      cout << "di ";
+    if (di != ((chunkB >> 2) &0b1))
       goto error_inconsistent_blocks;
-    }
     // block index should be + 1 
-    if (blockIndex+1 != (chunkB &0b11)){
-      cout << "A " << bitset<16>(chunkA) << endl;
-      cout << "B " << bitset<16>(chunkB) << endl;
-      cout << "C " << bitset<16>(chunkC) << endl;
-      cout << "D " << bitset<16>(chunkD) << endl;
-      cout << "blockIndex " << blockIndex << (chunkB & 0b11) << "hi ";
+    if (blockIndex+1 != (chunkB &0b11))
       goto error_inconsistent_blocks;
-    }
-
+    
     // row 3 // todo  
     /*
     if (messageProperties.flags0A.af[0] != parseBinaryToFrequency((chunkC >> 8) & 0xff)){
@@ -418,8 +365,6 @@ void decode0A(vector<uint16_t>& orderedData){
     messageProperties.flags0A.ps[(i/4)*2+1] = chunkD & 0xff;
   
   }
-
-
 
   // Print the extracted bits from chunkB
   cout << "PI: " << messageProperties.flagsCommon.pi << endl;
@@ -440,7 +385,7 @@ void decode0A(vector<uint16_t>& orderedData){
   cout << "AF: " << messageProperties.flags0A.af[0] 
     << ", " << messageProperties.flags0A.af[1] << endl;
   cout << "PS: \"";
-  for (uint16_t i = 0; i < orderedData.size()/2; i++){
+  for (size_t i = 0; i < orderedData.size()/2; i++){
     if (i+1 < orderedData.size()/2){
       if (static_cast<char>(messageProperties.flags0A.ps[i]) == ' '){
         // todo this could be problemm for message like "haha    ha"
@@ -515,41 +460,27 @@ void decode2A(vector<uint16_t>& orderedData){
     if (messageProperties.flagsCommon.pi != chunkA)
       goto error_inconsistent_blocks;
     // row 2 
-    if (group != (chunkB >> 12)){
-      cout << "group ";
+    if (group != (chunkB >> 12))
       goto error_inconsistent_blocks;
-    }
-    if (ab != ((chunkB >> 11) & 0b1)){
-      cout << "ab " << endl;
+    if (ab != ((chunkB >> 11) & 0b1))
       goto error_inconsistent_blocks;
-    }
-    if (messageProperties.flagsCommon.tp != ((chunkB >> 10) &0b1)){
-      cout << "tp ";
+    if (messageProperties.flagsCommon.tp != ((chunkB >> 10) &0b1))
       goto error_inconsistent_blocks;
-    }
-    if (messageProperties.flagsCommon.pty != ((chunkB >> 5) &0b11111)){
-      cout << "pty ";
+    if (messageProperties.flagsCommon.pty != ((chunkB >> 5) &0b11111))
       goto error_inconsistent_blocks;
-    }
-    if (messageProperties.flags2A.ab != ((chunkB >> 4) &0b1)){
-      cout << "ab ";
+    if (messageProperties.flags2A.ab != ((chunkB >> 4) &0b1))
       goto error_inconsistent_blocks;
-    }
     // block index should be + 1 
-    if (blockIndex+1 != (chunkB &0b1111)){
-      cout << "blockIndex " << blockIndex << (chunkB & 0b11) << "hi ";
+    if (blockIndex+1 != (chunkB &0b1111))
       goto error_inconsistent_blocks;
-    }
 
     blockIndex = chunkB & 0b1111;
     messageProperties.flags2A.rt[i]   = (chunkC >> 8) & 0xff;
     messageProperties.flags2A.rt[i+1] = chunkC & 0xff;
     messageProperties.flags2A.rt[i+2] = (chunkD >> 8) & 0xff;
     messageProperties.flags2A.rt[i+3] = chunkD & 0xff;
-  
   }
   
-  cout << "Size: " << orderedData.size() << endl;
   // Print the extracted bits from chunkB
   cout << "PI: " << messageProperties.flagsCommon.pi << endl;
   cout << "GT: 2A" << endl;
@@ -557,7 +488,7 @@ void decode2A(vector<uint16_t>& orderedData){
   cout << "PTY: " << messageProperties.flagsCommon.pty << endl;
   cout << "A/B: " << bitset<1>(messageProperties.flags2A.ab) << endl;
   cout << "RT: \"";
-  for (uint16_t i = 0; i < orderedData.size(); i++){
+  for (size_t i = 0; i < orderedData.size(); i++){
     if (i+1 < orderedData.size()){
       if (static_cast<char>(messageProperties.flags2A.rt[i]) == ' '){
         // todo this could be problemm for message like "haha    ha"
@@ -575,7 +506,6 @@ void decode2A(vector<uint16_t>& orderedData){
 error_inconsistent_blocks: 
   cerr << "Inconsistent blocks" << endl;
   exit(2);
-
 }
 
 /**
