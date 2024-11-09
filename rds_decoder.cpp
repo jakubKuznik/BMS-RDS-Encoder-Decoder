@@ -180,6 +180,8 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
 
   cout << "Data chunks: " << dataChunks.size() << endl;
 
+  orderedData.resize(dataChunks.size());
+
   // blocks can be in wrong order 2. 1. 3. 4 
   // also the messages inside block ABCD, BACD, DBCA 
   // Process each block of 4 messages
@@ -240,30 +242,31 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
       goto error_wrong_message;
     }
 
-    // Check the first 4 bits of bMessage if it's a "good block"
-    string group = bMessage.to_string().substr(0, 4);
-    if (group == "0000") {
+    uint16_t help = static_cast<uint16_t>(bMessage.to_ulong());
+    if (((help >> 12) & 0b1111) == 0b0000) {
       if (is2A == true){
         goto error_multiple_groups;
       }
-      orderedData.push_back(static_cast<uint16_t>(aMessage.to_ulong()));
-      orderedData.push_back(static_cast<uint16_t>(bMessage.to_ulong()));
-      orderedData.push_back(static_cast<uint16_t>(cMessage.to_ulong()));
-      orderedData.push_back(static_cast<uint16_t>(dMessage.to_ulong()));
+      orderedData[(i * 4) + 0] = static_cast<uint16_t>(aMessage.to_ulong()); 
+      orderedData[(i * 4) + 1] = static_cast<uint16_t>(bMessage.to_ulong()); 
+      orderedData[(i * 4) + 2] = static_cast<uint16_t>(cMessage.to_ulong()); 
+      orderedData[(i * 4) + 3] = static_cast<uint16_t>(dMessage.to_ulong()); 
       is0A = true;
-    } else if (group == "0010") {
-      // todo 2row last 4 bits 
-      // decode the num and story to specific index
-      cout << "First 4 bits of bMessage are 0010" << endl;
-      if (is0A == true){
-        goto error_multiple_groups;
-      }
-      is2A = true;
+    } else if (((help >> 12) & 0b1111) == 0b0010) {
+        
+        if (is0A == true){
+            goto error_multiple_groups;
+        }
+
+        cout << (help & 0b1111) << endl;
+        orderedData[((help & 0b1111) * 4) + 0] = static_cast<uint16_t>(aMessage.to_ulong()); 
+        orderedData[((help & 0b1111) * 4) + 1] = static_cast<uint16_t>(bMessage.to_ulong()); 
+        orderedData[((help & 0b1111) * 4) + 2] = static_cast<uint16_t>(cMessage.to_ulong()); 
+        orderedData[((help & 0b1111) * 4) + 3] = static_cast<uint16_t>(dMessage.to_ulong()); 
+        is2A = true;
     } else {
-      
       goto error_unsuported_format;
     }
-
   }
 
   return;
@@ -390,7 +393,11 @@ void decode0A(vector<uint16_t>& orderedData){
     }
     // block index should be + 1 
     if (blockIndex+1 != (chunkB &0b11)){
-      cout << "blockIndex ";
+      cout << "A " << bitset<16>(chunkA) << endl;
+      cout << "B " << bitset<16>(chunkB) << endl;
+      cout << "C " << bitset<16>(chunkC) << endl;
+      cout << "D " << bitset<16>(chunkD) << endl;
+      cout << "blockIndex " << blockIndex << (chunkB & 0b11) << "hi ";
       goto error_inconsistent_blocks;
     }
 
@@ -412,18 +419,6 @@ void decode0A(vector<uint16_t>& orderedData){
   
   }
 
-  // PI: 4660
-  // GT: 0A
-  // TP: 1
-  // PTY: 5
-  // TA: Active
-  // MS: Speech
-  // DI: 1
-  // AF: 104.5, 98.0
-  // PS: "RadioXYZ"
-  
-  // MS == 1: Music or MS == 0: Speech.
-  // Traffic Announcement (TA): Output as TA == 1: Active or TA == 0: Inactive.
 
 
   // Print the extracted bits from chunkB
@@ -475,6 +470,132 @@ error_inconsistent_blocks:
  * 
 */
 void decode2A(vector<uint16_t>& orderedData){
+  
+  MessageProperties messageProperties;
+
+  // Loop over the messages in the current block (4 messages per block)
+  auto& chunkA = orderedData[0]; auto& chunkB = orderedData[1];
+  auto& chunkC = orderedData[2]; auto& chunkD = orderedData[3];
+
+  // ROW 1 
+  messageProperties.flagsCommon.pi = chunkA;
+  // ROW 2  
+  uint16_t group = chunkB >> 12; 
+  if (group == 0b0000) {
+    messageProperties.is0A = true;
+  } 
+  else{
+    cerr << "Wrong data in blocks"; exit(2);
+  }
+  uint8_t ab = (chunkB >> 11) & 0b1;
+  messageProperties.flagsCommon.tp = (chunkB >> 10) & 0b1;
+  messageProperties.flagsCommon.pty = (chunkB >> 5) & 0b11111;
+  messageProperties.flags0A.ta = (chunkB >> 4) & 0b1;
+  messageProperties.flags0A.ms = (chunkB >> 3) & 0b1;
+  uint8_t di = (chunkB >> 2) & 0b1;
+  uint8_t blockIndex = chunkB & 0b11;
+
+  // row 3 
+  messageProperties.flags0A.af[0] = parseBinaryToFrequency((chunkC >> 8) & 0xff);
+  messageProperties.flags0A.af[1] = parseBinaryToFrequency(chunkC & 0xff);
+
+  // row 4 
+  messageProperties.flags0A.ps[0] = (chunkD >> 8) & 0xff; 
+  messageProperties.flags0A.ps[1] = chunkD & 0xff; 
+  
+  // Iterate over the data in blocks of 4 messages
+  for (size_t i = 4; i < orderedData.size(); i += 4) {
+    chunkA = orderedData[i];  chunkB = orderedData[i+1];
+    chunkC = orderedData[i+2];chunkD = orderedData[i+3];
+
+    // row 1 
+    if (messageProperties.flagsCommon.pi != chunkA)
+      goto error_inconsistent_blocks;
+
+    // row 2 
+    if (group != (chunkB >> 12)){
+      cout << "group ";
+      goto error_inconsistent_blocks;
+    }
+    if (ab != (chunkB >> 12) & 0b1){
+      cout << "ab ";
+      goto error_inconsistent_blocks;
+    }
+    if (messageProperties.flagsCommon.tp != ((chunkB >> 10) &0b1)){
+      cout << "tp ";
+      goto error_inconsistent_blocks;
+    }
+    if (messageProperties.flagsCommon.pty != ((chunkB >> 5) &0b11111)){
+      cout << "pty ";
+      goto error_inconsistent_blocks;
+    }
+    if (messageProperties.flags0A.ta != ((chunkB >> 4) &0b1)){
+      cout << "ta ";
+      goto error_inconsistent_blocks;
+    }
+    if (messageProperties.flags0A.ms != ((chunkB >> 3) &0b1)){
+      cout << "ms ";
+      goto error_inconsistent_blocks;
+    }
+    if (di != ((chunkB >> 2) &0b1)){
+      cout << "di ";
+      goto error_inconsistent_blocks;
+    }
+    // block index should be + 1 
+    if (blockIndex+1 != (chunkB &0b11)){
+      cout << "blockIndex ";
+      goto error_inconsistent_blocks;
+    }
+
+    // row 3 // todo  
+    /*
+    if (messageProperties.flags0A.af[0] != parseBinaryToFrequency((chunkC >> 8) & 0xff)){
+      cout << "freq1 ";
+      goto error_inconsistent_blocks;
+    }
+    if (messageProperties.flags0A.af[1] != parseBinaryToFrequency(chunkC & 0xff)){
+      cout << "freq2";
+      goto error_inconsistent_blocks;
+    }
+    */
+
+    blockIndex = chunkB & 0b11;
+    messageProperties.flags0A.ps[(i/4)*2]   = (chunkD >> 8) & 0xff;
+    messageProperties.flags0A.ps[(i/4)*2+1] = chunkD & 0xff;
+  
+  }
+
+
+
+  // Print the extracted bits from chunkB
+  cout << "PI: " << messageProperties.flagsCommon.pi << endl;
+  cout << "GT: 0A" << endl;
+  cout << "TP: " << bitset<1>(messageProperties.flagsCommon.tp) << endl;
+  cout << "PTY: " << messageProperties.flagsCommon.pty << endl;
+  if (messageProperties.flags0A.ta == 1){
+    cout << "TA: Active" << endl;
+  } else {
+    cout << "TA: Inactive" << endl;
+  }
+  if (messageProperties.flags0A.ms == 1){
+    cout << "MS: Music" << endl;
+  } else {
+    cout << "MS: Speech" << endl;
+  }
+  cout << "DI: " << bitset<1>(di) << endl;
+  cout << "AF: " << messageProperties.flags0A.af[0] 
+    << ", " << messageProperties.flags0A.af[1] << endl;
+  cout << "PS: \"";
+  for (uint16_t i = 0; i < orderedData.size() /2; i++){
+    cout << static_cast<char>(messageProperties.flags0A.ps[i]);
+  }
+  cout << "\"" << endl;
+
+  return;
+
+error_inconsistent_blocks: 
+  cerr << "Inconsistent blocks" << endl;
+  exit(2);
 
 }
 
@@ -487,14 +608,10 @@ void decodeMessage(vector<InputMessage>& dataChunks){
 
   orderMessage(dataChunks, orderedData);
 
-  // The second block in the orderedData
-  uint16_t secondValue = orderedData[1]; 
-  uint16_t firstFourBits = secondValue >> 12; 
-        
   // Check if the first 4 bits are 0000 or 0010
-  if (firstFourBits == 0b0000) {
+  if (((orderedData[1] >> 12) & 0b1111) == 0b0000) {
     decode0A(orderedData);
-  } else if (firstFourBits == 0b0010) {
+  } else if (((orderedData[1] >> 12) & 0b1111) == 0b0010) {
     decode2A(orderedData);
   } 
 
