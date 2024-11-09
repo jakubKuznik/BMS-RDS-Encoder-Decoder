@@ -367,15 +367,15 @@ void decode0A(vector<uint16_t>& orderedData){
       cout << "group ";
       goto error_inconsistent_blocks;
     }
-    if (ab != (chunkB >> 12) & 0b1){
+    if (ab != ((chunkB >> 11) & 0b1)){
       cout << "ab ";
       goto error_inconsistent_blocks;
     }
-    if (messageProperties.flagsCommon.tp != ((chunkB >> 10) &0b1)){
+    if (messageProperties.flagsCommon.tp != (((chunkB >> 10) &0b1))){
       cout << "tp ";
       goto error_inconsistent_blocks;
     }
-    if (messageProperties.flagsCommon.pty != ((chunkB >> 5) &0b11111)){
+    if (messageProperties.flagsCommon.pty != (((chunkB >> 5) &0b11111))){
       cout << "pty ";
       goto error_inconsistent_blocks;
     }
@@ -440,7 +440,15 @@ void decode0A(vector<uint16_t>& orderedData){
   cout << "AF: " << messageProperties.flags0A.af[0] 
     << ", " << messageProperties.flags0A.af[1] << endl;
   cout << "PS: \"";
-  for (uint16_t i = 0; i < orderedData.size() /2; i++){
+  for (uint16_t i = 0; i < orderedData.size()/2; i++){
+    if (i+1 < orderedData.size()/2){
+      if (static_cast<char>(messageProperties.flags0A.ps[i]) == ' '){
+        // todo this could be problemm for message like "haha    ha"
+        if (static_cast<char>(messageProperties.flags0A.ps[i+1] == ' ')){
+          break;
+        }
+      }
+    } 
     cout << static_cast<char>(messageProperties.flags0A.ps[i]);
   }
   cout << "\"" << endl;
@@ -481,27 +489,22 @@ void decode2A(vector<uint16_t>& orderedData){
   messageProperties.flagsCommon.pi = chunkA;
   // ROW 2  
   uint16_t group = chunkB >> 12; 
-  if (group == 0b0000) {
-    messageProperties.is0A = true;
-  } 
-  else{
+  if (group == 0b0010) {
+    messageProperties.is2A = true;
+  } else{
     cerr << "Wrong data in blocks"; exit(2);
   }
   uint8_t ab = (chunkB >> 11) & 0b1;
   messageProperties.flagsCommon.tp = (chunkB >> 10) & 0b1;
   messageProperties.flagsCommon.pty = (chunkB >> 5) & 0b11111;
-  messageProperties.flags0A.ta = (chunkB >> 4) & 0b1;
-  messageProperties.flags0A.ms = (chunkB >> 3) & 0b1;
-  uint8_t di = (chunkB >> 2) & 0b1;
-  uint8_t blockIndex = chunkB & 0b11;
+  messageProperties.flags2A.ab = (chunkB >> 4) & 0b1;
+  uint8_t blockIndex = chunkB & 0b1111;
 
-  // row 3 
-  messageProperties.flags0A.af[0] = parseBinaryToFrequency((chunkC >> 8) & 0xff);
-  messageProperties.flags0A.af[1] = parseBinaryToFrequency(chunkC & 0xff);
-
-  // row 4 
-  messageProperties.flags0A.ps[0] = (chunkD >> 8) & 0xff; 
-  messageProperties.flags0A.ps[1] = chunkD & 0xff; 
+  // row 3-4
+  messageProperties.flags2A.rt[0] = ((chunkC >> 8) & 0xff);
+  messageProperties.flags2A.rt[1] = (chunkC & 0xff);
+  messageProperties.flags2A.rt[2] = ((chunkD >> 8) & 0xff);
+  messageProperties.flags2A.rt[3] = (chunkD & 0xff);
   
   // Iterate over the data in blocks of 4 messages
   for (size_t i = 4; i < orderedData.size(); i += 4) {
@@ -511,14 +514,13 @@ void decode2A(vector<uint16_t>& orderedData){
     // row 1 
     if (messageProperties.flagsCommon.pi != chunkA)
       goto error_inconsistent_blocks;
-
     // row 2 
     if (group != (chunkB >> 12)){
       cout << "group ";
       goto error_inconsistent_blocks;
     }
-    if (ab != (chunkB >> 12) & 0b1){
-      cout << "ab ";
+    if (ab != ((chunkB >> 11) & 0b1)){
+      cout << "ab " << endl;
       goto error_inconsistent_blocks;
     }
     if (messageProperties.flagsCommon.tp != ((chunkB >> 10) &0b1)){
@@ -529,65 +531,42 @@ void decode2A(vector<uint16_t>& orderedData){
       cout << "pty ";
       goto error_inconsistent_blocks;
     }
-    if (messageProperties.flags0A.ta != ((chunkB >> 4) &0b1)){
-      cout << "ta ";
-      goto error_inconsistent_blocks;
-    }
-    if (messageProperties.flags0A.ms != ((chunkB >> 3) &0b1)){
-      cout << "ms ";
-      goto error_inconsistent_blocks;
-    }
-    if (di != ((chunkB >> 2) &0b1)){
-      cout << "di ";
+    if (messageProperties.flags2A.ab != ((chunkB >> 4) &0b1)){
+      cout << "ab ";
       goto error_inconsistent_blocks;
     }
     // block index should be + 1 
-    if (blockIndex+1 != (chunkB &0b11)){
-      cout << "blockIndex ";
+    if (blockIndex+1 != (chunkB &0b1111)){
+      cout << "blockIndex " << blockIndex << (chunkB & 0b11) << "hi ";
       goto error_inconsistent_blocks;
     }
 
-    // row 3 // todo  
-    /*
-    if (messageProperties.flags0A.af[0] != parseBinaryToFrequency((chunkC >> 8) & 0xff)){
-      cout << "freq1 ";
-      goto error_inconsistent_blocks;
-    }
-    if (messageProperties.flags0A.af[1] != parseBinaryToFrequency(chunkC & 0xff)){
-      cout << "freq2";
-      goto error_inconsistent_blocks;
-    }
-    */
-
-    blockIndex = chunkB & 0b11;
-    messageProperties.flags0A.ps[(i/4)*2]   = (chunkD >> 8) & 0xff;
-    messageProperties.flags0A.ps[(i/4)*2+1] = chunkD & 0xff;
+    blockIndex = chunkB & 0b1111;
+    messageProperties.flags2A.rt[i]   = (chunkC >> 8) & 0xff;
+    messageProperties.flags2A.rt[i+1] = chunkC & 0xff;
+    messageProperties.flags2A.rt[i+2] = (chunkD >> 8) & 0xff;
+    messageProperties.flags2A.rt[i+3] = chunkD & 0xff;
   
   }
-
-
-
+  
+  cout << "Size: " << orderedData.size() << endl;
   // Print the extracted bits from chunkB
   cout << "PI: " << messageProperties.flagsCommon.pi << endl;
-  cout << "GT: 0A" << endl;
+  cout << "GT: 2A" << endl;
   cout << "TP: " << bitset<1>(messageProperties.flagsCommon.tp) << endl;
   cout << "PTY: " << messageProperties.flagsCommon.pty << endl;
-  if (messageProperties.flags0A.ta == 1){
-    cout << "TA: Active" << endl;
-  } else {
-    cout << "TA: Inactive" << endl;
-  }
-  if (messageProperties.flags0A.ms == 1){
-    cout << "MS: Music" << endl;
-  } else {
-    cout << "MS: Speech" << endl;
-  }
-  cout << "DI: " << bitset<1>(di) << endl;
-  cout << "AF: " << messageProperties.flags0A.af[0] 
-    << ", " << messageProperties.flags0A.af[1] << endl;
-  cout << "PS: \"";
-  for (uint16_t i = 0; i < orderedData.size() /2; i++){
-    cout << static_cast<char>(messageProperties.flags0A.ps[i]);
+  cout << "A/B: " << bitset<1>(messageProperties.flags2A.ab) << endl;
+  cout << "RT: \"";
+  for (uint16_t i = 0; i < orderedData.size(); i++){
+    if (i+1 < orderedData.size()){
+      if (static_cast<char>(messageProperties.flags2A.rt[i]) == ' '){
+        // todo this could be problemm for message like "haha    ha"
+        if (static_cast<char>(messageProperties.flags2A.rt[i+1] == ' ')){
+          break;
+        }
+      }
+    } 
+    cout << static_cast<char>(messageProperties.flags2A.rt[i]);
   }
   cout << "\"" << endl;
 
