@@ -80,7 +80,7 @@ void printHelp(){
 
 bool parseBoolArg(const char* arg) {
   try {
-    int myInt = std::stoi(arg);
+    int myInt = stoi(arg);
     if (myInt == 0) {
       return false;
     } 
@@ -88,39 +88,39 @@ bool parseBoolArg(const char* arg) {
       return true;
     } 
     else {
-      throw std::out_of_range("Invalid boolean value");
+      throw out_of_range("Invalid boolean value");
     }
   } 
   catch (...) {
-    throw std::runtime_error("Invalid argument for boolean flag");
+    throw runtime_error("Invalid argument for boolean flag");
   }
 }
 
 template <typename T>
 T parseUintArg(const char* arg, T min, T max) {
   try {
-    int myInt = std::stoi(arg);
+    int myInt = stoi(arg);
     if (myInt >= min && myInt <= max) {
       return static_cast<T>(myInt);
     } 
     else {
-      throw std::out_of_range("Value out of range");
+      throw out_of_range("Value out of range");
     }
   } 
   catch (...) {
-    throw std::runtime_error("Invalid argument for unsigned int");
+    throw runtime_error("Invalid argument for unsigned int");
   }
 }
 
 void parseAfArg(const char* arg, float (&af)[AF_SIZE]) {
   
-  std::string input(arg);
-  std::replace(input.begin(), input.end(), ',', ' ');  
-  std::istringstream iss(input);
+  string input(arg);
+  replace(input.begin(), input.end(), ',', ' ');  
+  istringstream iss(input);
   float freq1, freq2;
     
   if (!(iss >> freq1) || !(iss >> freq2) || !iss.eof()) {
-    throw std::invalid_argument("Invalid alternative frequencies");
+    throw invalid_argument("Invalid alternative frequencies");
   }
 
   // Set the frequencies to the af array
@@ -128,18 +128,18 @@ void parseAfArg(const char* arg, float (&af)[AF_SIZE]) {
   af[1] = freq2;
 
   // Output the frequencies with one decimal precision, ensuring `.0` is printed
-  std::cout << std::fixed << std::setprecision(1);
-  std::cout << "f1 " << af[0] << " f2 " << af[1] << std::endl;
+  cout << fixed << setprecision(1);
+  cout << "f1 " << af[0] << " f2 " << af[1] << endl;
 }
 
 void parseStringArg(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
-  size_t len = std::strlen(arg);
+  size_t len = strlen(arg);
     
   if (len > maxLength) {
-    throw std::invalid_argument("Input string is too long (must be " + std::to_string(maxLength) + " characters or fewer)");
+    throw invalid_argument("Input string is too long (must be " + to_string(maxLength) + " characters or fewer)");
   }
 
-  std::strncpy(dest, arg, maxLength);
+  strncpy(dest, arg, maxLength);
 
   if (padWithSpaces && len < maxLength) {
     // Pad with spaces if the string is shorter and padding is required
@@ -328,7 +328,7 @@ uint16_t countCRC(uint16_t data, uint16_t magicConst) {
         
     // Check if the n-th bit is set to 1
     if ((extendedData & (1 << currentBit--)) == 0) {
-      //std::cerr << "SKIP" << std::endl;
+      //cerr << "SKIP" << endl;
       divisorShift--;
       continue;
     }
@@ -357,7 +357,7 @@ uint8_t parseFrequencyToBinary(float frequency) {
     
   // Check if the step is within the valid range (0-255 for 8 bits)
   if (step < 0 || step > 255) {
-    throw std::invalid_argument("Frequency out of range for binary representation.");
+    throw invalid_argument("Frequency out of range for binary representation.");
   }
   cout << "freq: " << frequency << " " << bitset<8>(step) << endl;
 

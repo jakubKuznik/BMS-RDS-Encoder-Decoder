@@ -13,35 +13,35 @@ using namespace std;
  * Prints help and exit program with return code 1
  */
 void printHelp(){
-  std::cerr << "Execution:" << std::endl;
-  std::cerr << "  ./program_encoder {-b MESSAGE}" << std::endl; 
-  std::cerr << "       Program reads from STDIN and prints output to STDOUT." << std::endl;
-  std::cerr << "" << std::endl;
-  std::cerr << "           MESSAGE" << std::endl;
-  std::cerr << "             - Sequence of 0 and 1 that has to be a multiple of 26" << std::endl;
+  cerr << "Execution:" << endl;
+  cerr << "  ./program_encoder {-b MESSAGE}" << endl; 
+  cerr << "       Program reads from STDIN and prints output to STDOUT." << endl;
+  cerr << "" << endl;
+  cerr << "           MESSAGE" << endl;
+  cerr << "             - Sequence of 0 and 1 that has to be a multiple of 26" << endl;
   exit(1);
 }
 
 /**
  * Parse binary string and store in a vector of InputMessage
  */
-void parseBinaryString(const std::string& binaryStr, std::vector<InputMessage>& dataChunks) {
+void parseBinaryString(const string& binaryStr, vector<InputMessage>& dataChunks) {
   size_t length = binaryStr.length();
 
   // Ensure the input length is a multiple of 26 bits (16-bit message + 10-bit CRC)
   if (length % 26 != 0) {
-    std::cerr << "Error: Binary string length must be a multiple of 26 bits." << std::endl;
+    cerr << "Error: Binary string length must be a multiple of 26 bits." << endl;
     goto errorArgs;
   }
 
   // Parse 26-bit chunks (16-bit message + 10-bit CRC)
   for (size_t i = 0; i < length; i += 26) {
     // Extract 16-bit message
-    std::bitset<16> messageBits(binaryStr.substr(i, 16));
+    bitset<16> messageBits(binaryStr.substr(i, 16));
     uint16_t message = static_cast<uint16_t>(messageBits.to_ulong());
 
     // Extract 10-bit CRC
-    std::bitset<10> crcBits(binaryStr.substr(i + 16, 10));
+    bitset<10> crcBits(binaryStr.substr(i + 16, 10));
     uint16_t crc = static_cast<uint16_t>(crcBits.to_ulong());
 
     // Store the message and CRC in the struct
@@ -51,14 +51,14 @@ void parseBinaryString(const std::string& binaryStr, std::vector<InputMessage>& 
   return;
 
 errorArgs:
-  std::cerr << "Error: Invalid binary string format." << std::endl;
+  cerr << "Error: Invalid binary string format." << endl;
   exit(1);
 }
 
 /**
  * Parse input args 
  */
-void parseArgs(int argc, char **argv, std::vector<InputMessage>& dataChunks) {
+void parseArgs(int argc, char **argv, vector<InputMessage>& dataChunks) {
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
@@ -66,20 +66,20 @@ void parseArgs(int argc, char **argv, std::vector<InputMessage>& dataChunks) {
     } 
     else if (strcmp(argv[i], "-b") == 0) {
       if (i + 1 < argc) {
-        std::string binaryStr = argv[++i]; // Move to the next argument for binary input
+        string binaryStr = argv[++i]; // Move to the next argument for binary input
         if (binaryStr.length() % 26 != 0) {
-          std::cerr << "Error: Binary string length must be a multiple of 26 bits." << std::endl;
+          cerr << "Error: Binary string length must be a multiple of 26 bits." << endl;
           goto errorArgs;
         }
         parseBinaryString(binaryStr, dataChunks);
       } 
       else {
-        std::cerr << "Error: Missing binary string after -b." << std::endl;
+        cerr << "Error: Missing binary string after -b." << endl;
         goto errorArgs;
       }
     } 
     else {
-      std::cerr << "Error: Unknown argument '" << argv[i] << "'." << std::endl;
+      cerr << "Error: Unknown argument '" << argv[i] << "'." << endl;
       goto errorArgs;
     }
   }
@@ -87,7 +87,7 @@ void parseArgs(int argc, char **argv, std::vector<InputMessage>& dataChunks) {
   return;
 
 errorArgs:
-  std::cerr << "Error: Wrong arguments. Try using {-h|--help}" << std::endl;
+  cerr << "Error: Wrong arguments. Try using {-h|--help}" << endl;
   exit(1);
 }
 
@@ -112,7 +112,7 @@ uint16_t countCRC(uint16_t data, uint16_t magicConst) {
         
     // Check if the n-th bit is set to 1
     if ((extendedData & (1 << currentBit--)) == 0) {
-      //std::cerr << "SKIP" << std::endl;
+      //cerr << "SKIP" << endl;
       divisorShift--;
       continue;
     }
@@ -137,23 +137,23 @@ uint16_t invertCRC(uint16_t data, uint16_t magicConst){
 /** 
  * Returns true if there were no error find in data
  */
-bool matrixMultiplication(const std::bitset<H_ROWS>& data) {
+bool matrixMultiplication(const bitset<H_ROWS>& data) {
   
-  std::bitset<H_ROWS> result = data & H_TRANSPOSED[0];
-  //std::cout << "Data   " << data << endl;
-  //std::cout << "Matrix " << H_TRANSPOSED[0] << endl;
-  //std::cout << "AND    " << result << std::endl;
-  //std::cout << "XOR    " << result << std::endl;
+  bitset<H_ROWS> result = data & H_TRANSPOSED[0];
+  //cout << "Data   " << data << endl;
+  //cout << "Matrix " << H_TRANSPOSED[0] << endl;
+  //cout << "AND    " << result << endl;
+  //cout << "XOR    " << result << endl;
 
   for (int i = 1; i < H_COLS; ++i) {
-    std::bitset<H_ROWS> oneMatrix = data & H_TRANSPOSED[i];
+    bitset<H_ROWS> oneMatrix = data & H_TRANSPOSED[i];
     // XOR all bits inside oneMatrix
     bool xorResult = 0; // Start with a 0
     for (int j = 0; j < H_ROWS; ++j) {
         xorResult ^= oneMatrix[j];  // XOR all the bits
     }
 
-    //std::cout << "Res    " << xorResult << std::endl;
+    //cout << "Res    " << xorResult << endl;
     
     // result should always be 0
     if (xorResult == true){
@@ -167,14 +167,14 @@ bool matrixMultiplication(const std::bitset<H_ROWS>& data) {
 /** 
  * Order message and returns orderedData 
  */
-void orderMessage(std::vector<InputMessage>& dataChunks, std::vector<uint16_t>& orderedData){
+void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedData){
   
   if (dataChunks.size() < 4) {
-    std::cerr << "Error: Not enough data in the vector to decode." << std::endl;
+    cerr << "Error: Not enough data in the vector to decode." << endl;
     exit(2);
   }
   else if (dataChunks.size() % 4 != 0){
-    std::cerr << "Error: Not enough data blocks." << std::endl;
+    cerr << "Error: Not enough data blocks." << endl;
     exit(2);
   }
 
@@ -183,23 +183,23 @@ void orderMessage(std::vector<InputMessage>& dataChunks, std::vector<uint16_t>& 
   // blocks can be in wrong order 2. 1. 3. 4 
   // also the messages inside block ABCD, BACD, DBCA 
   // Process each block of 4 messages
-  std::bitset<H_ROWS> concatenatedData;
-  std::bitset<CRC_BITS> invertedCrc;
+  bitset<H_ROWS> concatenatedData;
+  bitset<CRC_BITS> invertedCrc;
   bool is2A = false;
   bool is0A = false;
   for (size_t i = 0; i < (dataChunks.size()/4);i++) {
     
-    std::cout << "Message " << i << std::endl;
+    cout << "Message " << i << endl;
     // Loop over the messages in the current block
-    std::bitset<H_ROWS> aMessage, bMessage, cMessage, dMessage; 
+    bitset<H_ROWS> aMessage, bMessage, cMessage, dMessage; 
     bool aUsed = false, bUsed = false, cUsed = false, dUsed = false;
     for (size_t j = 0; j < 4 ; j++) {
       auto& chunk = dataChunks[(i*4) + j];
-      cout << "data: " << (i*4) + j << " " << std::bitset<16>(chunk.message) << " " << std::bitset<10>(chunk.crc) << " ";
+      cout << "data: " << (i*4) + j << " " << bitset<16>(chunk.message) << " " << bitset<10>(chunk.crc) << " ";
 
       if (aUsed == false){
         invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_A);
-        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
@@ -210,7 +210,7 @@ void orderMessage(std::vector<InputMessage>& dataChunks, std::vector<uint16_t>& 
       
       if (bUsed == false){
         invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_B);
-        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
@@ -220,7 +220,7 @@ void orderMessage(std::vector<InputMessage>& dataChunks, std::vector<uint16_t>& 
       
       if (cUsed == false){
         invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_C);
-        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
@@ -230,7 +230,7 @@ void orderMessage(std::vector<InputMessage>& dataChunks, std::vector<uint16_t>& 
       
       if (dUsed == false){
         invertedCrc = invertCRC(chunk.crc, CRC_BLOCK_OFFSET_D);
-        concatenatedData = (std::bitset<H_ROWS>(chunk.message) << CRC_BITS) | std::bitset<H_ROWS>(invertedCrc.to_ulong());
+        concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
           cout << "good block" << endl;
@@ -241,9 +241,8 @@ void orderMessage(std::vector<InputMessage>& dataChunks, std::vector<uint16_t>& 
     }
 
     // Check the first 4 bits of bMessage if it's a "good block"
-    std::string group = bMessage.to_string().substr(0, 4);
+    string group = bMessage.to_string().substr(0, 4);
     if (group == "0000") {
-      cout << "First 4 bits of bMessage are 0000" << endl;
       if (is2A == true){
         goto error_multiple_groups;
       }
@@ -287,7 +286,7 @@ error_unsuported_format:
 float parseBinaryToFrequency(uint8_t binaryValue) {
   // Check if binaryValue is within the valid range (0-255)
   if (binaryValue > 255) {
-    throw std::invalid_argument("Binary value out of range for frequency.");
+    throw invalid_argument("Binary value out of range for frequency.");
   }
 
   // Calculate the frequency: divide by 10 and add 87.5 MHz
@@ -316,7 +315,7 @@ float parseBinaryToFrequency(uint8_t binaryValue) {
  * AF: 104.5, 98.0
  * PS: "RadioXYZ"
 */
-void decode0A(std::vector<uint16_t>& orderedData){
+void decode0A(vector<uint16_t>& orderedData){
 
   MessageProperties messageProperties;
 
@@ -356,37 +355,104 @@ void decode0A(std::vector<uint16_t>& orderedData){
     chunkA = orderedData[i];  chunkB = orderedData[i+1];
     chunkC = orderedData[i+2];chunkD = orderedData[i+3];
 
-    
-    
+    // row 1 
+    if (messageProperties.flagsCommon.pi != chunkA)
+      goto error_inconsistent_blocks;
 
+    // row 2 
+    if (group != (chunkB >> 12)){
+      cout << "group ";
+      goto error_inconsistent_blocks;
+    }
+    if (ab != (chunkB >> 12) & 0b1){
+      cout << "ab ";
+      goto error_inconsistent_blocks;
+    }
+    if (messageProperties.flagsCommon.tp != ((chunkB >> 10) &0b1)){
+      cout << "tp ";
+      goto error_inconsistent_blocks;
+    }
+    if (messageProperties.flagsCommon.pty != ((chunkB >> 5) &0b11111)){
+      cout << "pty ";
+      goto error_inconsistent_blocks;
+    }
+    if (messageProperties.flags0A.ta != ((chunkB >> 4) &0b1)){
+      cout << "ta ";
+      goto error_inconsistent_blocks;
+    }
+    if (messageProperties.flags0A.ms != ((chunkB >> 3) &0b1)){
+      cout << "ms ";
+      goto error_inconsistent_blocks;
+    }
+    if (di != ((chunkB >> 2) &0b1)){
+      cout << "di ";
+      goto error_inconsistent_blocks;
+    }
+    // block index should be + 1 
+    if (blockIndex+1 != (chunkB &0b11)){
+      cout << "blockIndex ";
+      goto error_inconsistent_blocks;
+    }
+
+    // row 3 // todo  
+    /*
+    if (messageProperties.flags0A.af[0] != parseBinaryToFrequency((chunkC >> 8) & 0xff)){
+      cout << "freq1 ";
+      goto error_inconsistent_blocks;
+    }
+    if (messageProperties.flags0A.af[1] != parseBinaryToFrequency(chunkC & 0xff)){
+      cout << "freq2";
+      goto error_inconsistent_blocks;
+    }
+    */
+
+    blockIndex = chunkB & 0b11;
+    messageProperties.flags0A.ps[(i/4)*2]   = (chunkD >> 8) & 0xff;
+    messageProperties.flags0A.ps[(i/4)*2+1] = chunkD & 0xff;
   
   }
-  
-  // Print the extracted bits from chunkB
-  std::cout << "pi: " << messageProperties.flagsCommon.pi << std::endl;
-  std::cout << "Group: " << std::bitset<4>(group) << std::endl;
-  std::cout << "TP: " << std::bitset<1>(messageProperties.flagsCommon.tp) << std::endl;
-  std::cout << "PTY: " << messageProperties.flagsCommon.pty << std::endl;
-  std::cout << "TA: " << std::bitset<1>(messageProperties.flags0A.ta) << std::endl;
-  std::cout << "MS: " << std::bitset<1>(messageProperties.flags0A.ms) << std::endl;
-  std::cout << "DI: " << std::bitset<1>(di) << std::endl;
-  std::cout << "AB: " << std::bitset<1>(ab) << std::endl;
-  // Print `Freq` values in binary form
-  std::cout << "Freq 1: " << std::bitset<8>((chunkC >> 8) & 0xff) << " (" << messageProperties.flags0A.af[0] << " MHz)" << std::endl;
-  std::cout << "Freq 2: " << std::bitset<8>(chunkC & 0xff) << " (" << messageProperties.flags0A.af[1] << " MHz)" << std::endl;
-  // Print `Block Index` in binary form
 
-  // Print `Data` in binary form, as well as in character form
-  std::cout << "Data: " 
-    << std::bitset<8>(messageProperties.flags0A.ps[0]) << " " 
-    << std::bitset<8>(messageProperties.flags0A.ps[1]) 
-    << " (" << static_cast<char>(messageProperties.flags0A.ps[0]) 
-    << static_cast<char>(messageProperties.flags0A.ps[1]) << ")" 
-    << std::endl;
+  // PI: 4660
+  // GT: 0A
+  // TP: 1
+  // PTY: 5
+  // TA: Active
+  // MS: Speech
+  // DI: 1
+  // AF: 104.5, 98.0
+  // PS: "RadioXYZ"
+  
+  // MS == 1: Music or MS == 0: Speech.
+  // Traffic Announcement (TA): Output as TA == 1: Active or TA == 0: Inactive.
+
+
+  // Print the extracted bits from chunkB
+  cout << "PI: " << messageProperties.flagsCommon.pi << endl;
+  cout << "GT: 0A" << endl;
+  cout << "TP: " << bitset<1>(messageProperties.flagsCommon.tp) << endl;
+  cout << "PTY: " << messageProperties.flagsCommon.pty << endl;
+  if (messageProperties.flags0A.ta == 1){
+    cout << "TA: Active" << endl;
+  } else {
+    cout << "TA: Inactive" << endl;
+  }
+  if (messageProperties.flags0A.ms == 1){
+    cout << "MS: Music" << endl;
+  } else {
+    cout << "MS: Speech" << endl;
+  }
+  cout << "DI: " << bitset<1>(di) << endl;
+  cout << "AF: " << messageProperties.flags0A.af[0] 
+    << ", " << messageProperties.flags0A.af[1] << endl;
+  cout << "PS: \"";
+  for (uint16_t i = 0; i < orderedData.size() /2; i++){
+    cout << static_cast<char>(messageProperties.flags0A.ps[i]);
+  }
+  cout << "\"" << endl;
 
   return;
 
-error_inconsisten_blocks: 
+error_inconsistent_blocks: 
   cerr << "Inconsistent blocks" << endl;
   exit(2);
 
@@ -408,16 +474,16 @@ error_inconsisten_blocks:
  * RT: "Now Playing: Song Title by Artist"
  * 
 */
-void decode2A(std::vector<uint16_t>& orderedData){
+void decode2A(vector<uint16_t>& orderedData){
 
 }
 
 /**
  * decode input message  
 */
-void decodeMessage(std::vector<InputMessage>& dataChunks){
+void decodeMessage(vector<InputMessage>& dataChunks){
   
-  std::vector<uint16_t> orderedData;
+  vector<uint16_t> orderedData;
 
   orderMessage(dataChunks, orderedData);
 
@@ -436,7 +502,7 @@ void decodeMessage(std::vector<InputMessage>& dataChunks){
 }
 
 int main(int argc, char** argv) {
-  std::vector<InputMessage> dataChunks;
+  vector<InputMessage> dataChunks;
 
   // Parse command-line arguments
   parseArgs(argc, argv, dataChunks);
