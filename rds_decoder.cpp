@@ -282,6 +282,21 @@ error_unsuported_format:
 }
 
 /**
+ * Returns frequency from 8bits 
+ */
+float parseBinaryToFrequency(uint8_t binaryValue) {
+  // Check if binaryValue is within the valid range (0-255)
+  if (binaryValue > 255) {
+    throw std::invalid_argument("Binary value out of range for frequency.");
+  }
+
+  // Calculate the frequency: divide by 10 and add 87.5 MHz
+  float frequency = 87.5 + (binaryValue / 10.0);
+
+  return frequency;
+}
+
+/**
  *
  * Program Identification (PI): Output as a 16-bit unsigned integer.
  * Program Type (PTY): Output as a 5-bit unsigned integer.
@@ -306,35 +321,73 @@ void decode0A(std::vector<uint16_t>& orderedData){
   MessageProperties messageProperties;
 
   // Loop over the messages in the current block (4 messages per block)
-  auto& chunkA = orderedData[0];
-  auto& chunkB = orderedData[1];
-  auto& chunkC = orderedData[2];
-  auto& chunkD = orderedData[3];
+  auto& chunkA = orderedData[0]; auto& chunkB = orderedData[1];
+  auto& chunkC = orderedData[2]; auto& chunkD = orderedData[3];
 
-  // here gets first 16 bits from chunkA and first 4 bits from chunkB   
+  // ROW 1 
   messageProperties.flagsCommon.pi = chunkA;
+  
+  // ROW 2  
   uint16_t group = chunkB >> 12; 
-    
   if (group == 0b0000) {
     messageProperties.is0A = true;
   } 
   else{
-    goto error_in_data;  
+    cerr << "Wrong data in blocks"; exit(2);
   }
+  uint8_t ab = (chunkB >> 11) & 0b1;
+  messageProperties.flagsCommon.tp = (chunkB >> 10) & 0b1;
+  messageProperties.flagsCommon.pty = (chunkB >> 5) & 0b11111;
+  messageProperties.flags0A.ta = (chunkB >> 4) & 0b1;
+  messageProperties.flags0A.ms = (chunkB >> 3) & 0b1;
+  uint8_t di = (chunkB >> 2) & 0b1;
+  uint8_t blockIndex = chunkB & 0b11;
 
-  uint8_t ab;
-  // Get the 5th bit from chunkB
-  ab = (chunkB >> 10) & 0b1;
-  // todo continue here 
+  // row 3 
+  messageProperties.flags0A.af[0] = parseBinaryToFrequency((chunkC >> 8) & 0xff);
+  messageProperties.flags0A.af[1] = parseBinaryToFrequency(chunkC & 0xff);
+
+  // row 4 
+  messageProperties.flags0A.ps[0] = (chunkD >> 8) & 0xff; 
+  messageProperties.flags0A.ps[1] = chunkD & 0xff; 
+  
   // Iterate over the data in blocks of 4 messages
   for (size_t i = 4; i < orderedData.size(); i += 4) {
+    chunkA = orderedData[i];  chunkB = orderedData[i+1];
+    chunkC = orderedData[i+2];chunkD = orderedData[i+3];
+
+    
+    
+
   
   }
+  
+  // Print the extracted bits from chunkB
+  std::cout << "pi: " << messageProperties.flagsCommon.pi << std::endl;
+  std::cout << "Group: " << std::bitset<4>(group) << std::endl;
+  std::cout << "TP: " << std::bitset<1>(messageProperties.flagsCommon.tp) << std::endl;
+  std::cout << "PTY: " << messageProperties.flagsCommon.pty << std::endl;
+  std::cout << "TA: " << std::bitset<1>(messageProperties.flags0A.ta) << std::endl;
+  std::cout << "MS: " << std::bitset<1>(messageProperties.flags0A.ms) << std::endl;
+  std::cout << "DI: " << std::bitset<1>(di) << std::endl;
+  std::cout << "AB: " << std::bitset<1>(ab) << std::endl;
+  // Print `Freq` values in binary form
+  std::cout << "Freq 1: " << std::bitset<8>((chunkC >> 8) & 0xff) << " (" << messageProperties.flags0A.af[0] << " MHz)" << std::endl;
+  std::cout << "Freq 2: " << std::bitset<8>(chunkC & 0xff) << " (" << messageProperties.flags0A.af[1] << " MHz)" << std::endl;
+  // Print `Block Index` in binary form
+
+  // Print `Data` in binary form, as well as in character form
+  std::cout << "Data: " 
+    << std::bitset<8>(messageProperties.flags0A.ps[0]) << " " 
+    << std::bitset<8>(messageProperties.flags0A.ps[1]) 
+    << " (" << static_cast<char>(messageProperties.flags0A.ps[0]) 
+    << static_cast<char>(messageProperties.flags0A.ps[1]) << ")" 
+    << std::endl;
 
   return;
 
-error_in_data:
-  cerr << "Wrong data in blocks";
+error_inconsisten_blocks: 
+  cerr << "Inconsistent blocks" << endl;
   exit(2);
 
 }
