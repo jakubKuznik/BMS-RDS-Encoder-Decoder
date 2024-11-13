@@ -80,43 +80,96 @@ T parseUintArg(const char* arg, T min, T max) {
   }
 }
 
+bool hasExactlyOneDecimal(const std::string& str) {
+    // Split the string at the decimal point
+    size_t decimal_pos = str.find('.');
+
+    // Ensure there is exactly one decimal point
+    if (decimal_pos == std::string::npos || str.find('.', decimal_pos + 1) != std::string::npos) {
+        return false;
+    }
+
+    // Split into two parts: before and after the decimal point
+    std::string before_decimal = str.substr(0, decimal_pos);
+    std::string after_decimal = str.substr(decimal_pos + 1);
+
+    // Check if there is exactly one digit after the decimal point
+    if (after_decimal.length() != 1) {
+        return false;
+    }
+
+    // Check if there are digits before the decimal point (non-empty)
+    if (before_decimal.empty()) {
+        return false;
+    }
+
+    return true;
+}
+
 void parseAfArg(const char* arg, float (&af)[AF_SIZE]) {
-  
-  string input(arg);
-  replace(input.begin(), input.end(), ',', ' ');  
-  istringstream iss(input);
-  float freq1, freq2;
-    
-  if (!(iss >> freq1) || !(iss >> freq2) || !iss.eof()) {
-    throw invalid_argument("Invalid alternative frequencies");
-  }
+    std::string input(arg);
 
-  // Set the frequencies to the af array
-  af[0] = freq1;
-  af[1] = freq2;
+    // Find the comma and check if there's exactly one
+    size_t comma_pos = input.find(',');
+    if (comma_pos == std::string::npos) {
+        throw std::invalid_argument("Input string must contain a comma separating two values");
+    }
 
+    size_t second_comma_pos = input.find(',', comma_pos + 1);
+    if (second_comma_pos != std::string::npos) {
+        throw std::invalid_argument("Input string must contain exactly one comma separating two values");
+    }
+
+
+    // Extract the parts before and after the comma
+    std::string part1 = input.substr(0, comma_pos);
+    std::string part2 = input.substr(comma_pos + 1);
+
+    // Check if both parts contain exactly one decimal point and digits before and after it
+    if (!hasExactlyOneDecimal(part1) || !hasExactlyOneDecimal(part2)) {
+        throw std::invalid_argument("Both parts must contain exactly one decimal point and digits before and after it");
+    }
+
+    // Attempt to parse the two parts as floats
+    std::istringstream iss1(part1), iss2(part2);
+    float freq1, freq2;
+    if (!(iss1 >> freq1) || !(iss2 >> freq2)) {
+        throw std::invalid_argument("Both parts must be valid numbers");
+    }
+
+    // Set the frequencies to the af array
+    af[0] = freq1;
+    af[1] = freq2;
 }
 
 void parseStringArg(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
-  size_t len = strlen(arg);
-    
-  if (len > maxLength) {
-    throw invalid_argument("Input string is too long (must be " + to_string(maxLength) + " characters or fewer)");
-  }
+    // Regular expression to validate the input string
+    std::regex valid_regex("^[a-zA-Z0-9 ]*$");
 
-  strncpy(dest, arg, maxLength);
-
-  if (padWithSpaces && len < maxLength) {
-    // Pad with spaces if the string is shorter and padding is required
-    for (size_t i = len; i < maxLength; ++i) {
-      dest[i] = ' ';
+    // Check if the argument matches the regex pattern
+    if (!std::regex_match(arg, valid_regex)) {
+        throw std::invalid_argument("Input string contains invalid characters. Only alphanumeric and spaces are allowed.");
     }
-  }
 
-  // Null-terminate the string if padding is not required (when input is shorter than maxLength)
-  if (!padWithSpaces) {
-    dest[len] = '\0';
-  }
+    size_t len = strlen(arg);
+  
+    if (len > maxLength) {
+        throw std::invalid_argument("Input string is too long (must be " + std::to_string(maxLength) + " characters or fewer)");
+    }
+
+    strncpy(dest, arg, maxLength);
+
+    if (padWithSpaces && len < maxLength) {
+        // Pad with spaces if the string is shorter and padding is required
+        for (size_t i = len; i < maxLength; ++i) {
+            dest[i] = ' ';
+        }
+    }
+
+    // Null-terminate the string if padding is not required (when input is shorter than maxLength)
+    if (!padWithSpaces) {
+        dest[len] = '\0';
+    }
 }
 
 /**
@@ -243,7 +296,7 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
     cerr << "Must choose either -g 0A or -g 2A" << endl;
     goto errorArgs;
   }
-  if (!commonPi && !commonPty && !commonTp) {
+  if (!commonPi || !commonPty || !commonTp) {
     cerr << "Common parameter missing {-pi, -pty, -tp}" << endl;
     goto errorArgs;
   }
@@ -318,7 +371,8 @@ uint8_t parseFrequencyToBinary(float frequency) {
     
   // Check if the step is within the valid range (0-255 for 8 bits)
   if (step < 0 || step > 255) {
-    throw invalid_argument("Frequency out of range for binary representation.");
+    cerr << "Frequency out of range for binary representation." << endl;
+    exit(1);
   }
 
   // Return the step as an 8-bit unsigned integer
