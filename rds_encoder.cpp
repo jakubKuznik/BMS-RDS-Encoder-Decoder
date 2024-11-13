@@ -9,38 +9,6 @@
 
 using namespace std;
 
-// TODO delete
-void printProgramConfig(const ProgramConfig &config) {
-  cerr << "ProgramConfig: " << endl;
-    
-  // Print general flags
-  cerr << "  is0A: " << boolalpha << config.is0A << endl;
-  cerr << "  is2A: " << boolalpha << config.is2A << endl;
-
-  // Print FlagsCommon
-  cerr << "  FlagsCommon: " << endl;
-  cerr << "    pi: " << config.flagsCommon.pi << endl;
-  cerr << "    pty: " << config.flagsCommon.pty << endl;
-  cerr << "    tp: " << boolalpha << config.flagsCommon.tp << endl;
-
-  // Print Flags0A
-  cerr << "  Flags0A: " << endl;
-  cerr << "    ms: " << boolalpha << config.flags0A.ms << endl;
-  cerr << "    ta: " << boolalpha << config.flags0A.ta << endl;
-  cerr << "    af: [";
-  for (int i = 0; i < AF_SIZE; ++i) {
-    cerr << config.flags0A.af[i];
-    if (i < AF_SIZE - 1) cerr << ", ";
-  }
-  cerr << "]" << endl;
-  cerr << "    ps: " << config.flags0A.ps << endl;
-
-  // Print Flags2A
-  cerr << "  Flags2A: " << endl;
-  cerr << "    rt: " << config.flags2A.rt << endl;
-  cerr << "    ab: " << boolalpha << config.flags2A.ab << endl;
-}
-
 /**
  * Prints help and exit program with return code 1
 */
@@ -127,9 +95,6 @@ void parseAfArg(const char* arg, float (&af)[AF_SIZE]) {
   af[0] = freq1;
   af[1] = freq2;
 
-  // Output the frequencies with one decimal precision, ensuring `.0` is printed
-  cout << fixed << setprecision(1);
-  cout << "f1 " << af[0] << " f2 " << af[1] << endl;
 }
 
 void parseStringArg(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
@@ -269,9 +234,6 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
     } 
   }
 
-  // TODO delete 
-  printProgramConfig(*config);
-
   // error check
   if (config->is0A && config->is2A) {
     cerr << "Cannot choose both -g 0A and 2A" << endl;
@@ -328,7 +290,6 @@ uint16_t countCRC(uint16_t data, uint16_t magicConst) {
         
     // Check if the n-th bit is set to 1
     if ((extendedData & (1 << currentBit--)) == 0) {
-      //cerr << "SKIP" << endl;
       divisorShift--;
       continue;
     }
@@ -359,7 +320,6 @@ uint8_t parseFrequencyToBinary(float frequency) {
   if (step < 0 || step > 255) {
     throw invalid_argument("Frequency out of range for binary representation.");
   }
-  cout << "freq: " << frequency << " " << bitset<8>(step) << endl;
 
   // Return the step as an 8-bit unsigned integer
   return static_cast<uint8_t>(step);
@@ -393,20 +353,17 @@ void generateOutput0a(ProgramConfig *config){
     
   for (int i = 0; i < 4; i++){
     // FIRST ROW - FLAGS
-    cout << "" << bitset<16>(config->flagsCommon.pi);
-    cout << " " << bitset<10>(countCRC(config->flagsCommon.pi, CRC_BLOCK_OFFSET_A)) << endl;
+    cout <<  bitset<16>(config->flagsCommon.pi) << bitset<10>(countCRC(config->flagsCommon.pi, CRC_BLOCK_OFFSET_A));
         
     // SECOND ROW - FLAGS
     // clear last 2 bits 
     row2 &= 0b1111111111111100; // Clear last two bits (set them to 0)
     row2 |= (frame_num & 0b11);
     frame_num++;
-    cout << bitset<16>(row2);
-    cout << " " << bitset<10>(countCRC(row2, CRC_BLOCK_OFFSET_B)) << endl;
+    cout << bitset<16>(row2) << bitset<10>(countCRC(row2, CRC_BLOCK_OFFSET_B));
     
     // THIRD ROW - Frequencies  
-    cout << bitset<16>(row3);
-    cout << " " << bitset<10>(countCRC(row3, CRC_BLOCK_OFFSET_C)) << endl;
+    cout << bitset<16>(row3) << bitset<10>(countCRC(row3, CRC_BLOCK_OFFSET_C));
     row3 = 0;
 
     // FOURTH ROW - MESSAGE 
@@ -414,8 +371,7 @@ void generateOutput0a(ProgramConfig *config){
     row4 |= (static_cast<uint8_t>(config->flags0A.ps[(i*2)]) << 8);
     row4 |= (static_cast<uint8_t>(config->flags0A.ps[(i*2)+1]));
     
-    cout << bitset<16>(row4);
-    cout << " " << bitset<10>(countCRC(row4, CRC_BLOCK_OFFSET_D)) << endl << endl;
+    cout << bitset<16>(row4) << bitset<10>(countCRC(row4, CRC_BLOCK_OFFSET_D));
   }
 }
 
@@ -444,8 +400,7 @@ void generateOutput2a(ProgramConfig *config){
   for (int i = 0; i < blocks; i++){
 
     // ROW 1        
-    cout << "" << bitset<16>(config->flagsCommon.pi);
-    cout << " " << bitset<10>(countCRC(config->flagsCommon.pi, CRC_BLOCK_OFFSET_A)) << endl;
+    cout << bitset<16>(config->flagsCommon.pi) << bitset<10>(countCRC(config->flagsCommon.pi, CRC_BLOCK_OFFSET_A));
         
     // ROW 2       
     // text sexment 
@@ -454,24 +409,21 @@ void generateOutput2a(ProgramConfig *config){
     row2 |= (text_segment & 0xF);  // Set the lower 4 bits of row2 to the lower 4 bits of text_segment
     text_segment++;
     
-    cout << bitset<16>(row2);
-    cout << " " << bitset<10>(countCRC(row2, CRC_BLOCK_OFFSET_B)) << endl;
+    cout << bitset<16>(row2) << bitset<10>(countCRC(row2, CRC_BLOCK_OFFSET_B));
         
     // ROW 3       
     row3 = 0;
     row3 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)]) << 8);
     row3 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)+1]));
         
-    cout << bitset<16>(row3);
-    cout << " " << bitset<10>(countCRC(row3, CRC_BLOCK_OFFSET_C)) << endl;
+    cout << bitset<16>(row3) << bitset<10>(countCRC(row3, CRC_BLOCK_OFFSET_C));
     
     // ROW 4       
     row4 = 0;
     row4 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)+2]) << 8);
     row4 |= (static_cast<uint8_t>(config->flags2A.rt[(i*4)+3]));
 
-    cout << bitset<16>(row4);
-    cout << " " << bitset<10>(countCRC(row4, CRC_BLOCK_OFFSET_D)) << endl << endl;
+    cout << bitset<16>(row4) << bitset<10>(countCRC(row4, CRC_BLOCK_OFFSET_D));
   }
 }
 
@@ -487,7 +439,6 @@ void generateOutput(ProgramConfig *config){
   else if (config->is2A){
     generateOutput2a(config);
   }
-  cout << endl;
 } 
 
 int main(int argc, char **argv){
