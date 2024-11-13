@@ -7,8 +7,7 @@
 
 CC = g++
 
-SANITIZE_FLAGS = -fsanitize=address,leak 
-CFLAGS = -g -Wpedantic -Wall -Wextra $(SANITIZE_FLAGS) 
+CFLAGS = -g -Wpedantic -Wall -Wextra 
 
 all: rds_encoder rds_decoder
 
