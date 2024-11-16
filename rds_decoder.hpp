@@ -29,11 +29,7 @@
 #define PS_SIZE 8 
 #define RT_SIZE_PLUS_TERMINATOR 65
 
-typedef struct{
-  uint16_t message;  
-  uint16_t crc;  // CRC will be only on lower 10 bits 
-} InputMessage;
-
+// Matrix for CRC evaluation
 const std::bitset<H_ROWS> H_TRANSPOSED[H_COLS] = {
   0b10000000001001111101100111,
   0b01000000000100111110110011,
@@ -47,12 +43,28 @@ const std::bitset<H_ROWS> H_TRANSPOSED[H_COLS] = {
   0b00000000010011111011001111
 };
 
+/**
+ * Struct holds raw input data and divide it into chunks where 
+ * 16 bit is a message 
+ * 10 bit is a CRC code
+ */
+typedef struct{
+  uint16_t message;  
+  uint16_t crc;  // CRC will be only on lower 10 bits 
+} InputMessage;
+
+/**
+ * Holds flags that are the same for 0A and 2A 
+ */
 typedef struct {
   unsigned int pi;  
   unsigned int pty; 
   bool tp;          
 } FlagsCommon;
 
+/**
+ * Holds only 0A flags. 
+ */
 typedef struct {
   bool ms;                    
   bool ta;                     
@@ -60,11 +72,17 @@ typedef struct {
   char ps[PS_SIZE]; 
 } Flags0A;
 
+/**
+ * Holds only 2A flags. 
+ */
 typedef struct {
   char rt[RT_SIZE_PLUS_TERMINATOR];   
   bool ab;          
 } Flags2A;
 
+/**
+ * Holds whole message with its specific flags. 
+ */
 typedef struct {
   bool is0A;       
   bool is2A;       

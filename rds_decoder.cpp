@@ -124,6 +124,9 @@ uint16_t countCRC(uint16_t data, uint16_t magicConst) {
   return static_cast<uint16_t>(extendedData & 0x3FF); 
 }
 
+/**
+ * Invert CRC code
+ */
 uint16_t invertCRC(uint16_t data, uint16_t magicConst){
   return data ^ magicConst;
 }
@@ -150,7 +153,7 @@ bool matrixMultiplication(const bitset<H_ROWS>& data) {
 }
 
 /** 
- * Order message and returns orderedData 
+ * Order message in to correct order and returns orderedData 
  */
 void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedData){
   
@@ -228,14 +231,14 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
       orderedData[(i * 4) + 2] = static_cast<uint16_t>(cMessage.to_ulong()); 
       orderedData[(i * 4) + 3] = static_cast<uint16_t>(dMessage.to_ulong()); 
     } else if (((help >> 12) & 0b1111) == 0b0010) {
-        is2A = true;
-        if (is0A == true){
-            goto error_multiple_groups;
-        }
-        orderedData[((help & 0b1111) * 4) + 0] = static_cast<uint16_t>(aMessage.to_ulong()); 
-        orderedData[((help & 0b1111) * 4) + 1] = static_cast<uint16_t>(bMessage.to_ulong()); 
-        orderedData[((help & 0b1111) * 4) + 2] = static_cast<uint16_t>(cMessage.to_ulong()); 
-        orderedData[((help & 0b1111) * 4) + 3] = static_cast<uint16_t>(dMessage.to_ulong()); 
+      is2A = true;
+      if (is0A == true){
+        goto error_multiple_groups;
+      }
+      orderedData[((help & 0b1111) * 4) + 0] = static_cast<uint16_t>(aMessage.to_ulong()); 
+      orderedData[((help & 0b1111) * 4) + 1] = static_cast<uint16_t>(bMessage.to_ulong()); 
+      orderedData[((help & 0b1111) * 4) + 2] = static_cast<uint16_t>(cMessage.to_ulong()); 
+      orderedData[((help & 0b1111) * 4) + 3] = static_cast<uint16_t>(dMessage.to_ulong()); 
     } else {
       goto error_unsuported_format;
     }
@@ -348,18 +351,6 @@ void decode0A(vector<uint16_t>& orderedData){
     if (blockIndex+1 != (chunkB &0b11))
       goto error_inconsistent_blocks;
     
-    // row 3 // todo  
-    /*
-    if (messageProperties.flags0A.af[0] != parseBinaryToFrequency((chunkC >> 8) & 0xff)){
-      cout << "freq1 ";
-      goto error_inconsistent_blocks;
-    }
-    if (messageProperties.flags0A.af[1] != parseBinaryToFrequency(chunkC & 0xff)){
-      cout << "freq2";
-      goto error_inconsistent_blocks;
-    }
-    */
-
     blockIndex = chunkB & 0b11;
     messageProperties.flags0A.ps[(i/4)*2]   = (chunkD >> 8) & 0xff;
     messageProperties.flags0A.ps[(i/4)*2+1] = chunkD & 0xff;
@@ -388,7 +379,7 @@ void decode0A(vector<uint16_t>& orderedData){
   for (size_t i = 0; i < orderedData.size()/2; i++){
     if (i+1 < orderedData.size()/2){
       if (static_cast<char>(messageProperties.flags0A.ps[i]) == ' '){
-        // todo this could be problemm for message like "haha    ha"
+        // this could be problemm for message like "haha    ha"
         if (static_cast<char>(messageProperties.flags0A.ps[i+1] == ' ')){
           break;
         }
@@ -412,7 +403,8 @@ error_inconsistent_blocks:
  * Program Type (PTY)**: Output as a 5-bit unsigned integer.
  * Traffic Program (TP)**: Output as `TP: 1` or `TP: 0`.
  * Radio Text A/B flag (A/B)**: Output as `RT A/B: 0` or `RT A/B: 1`.
- * Radio Text (RT)**: Output the radio text string (64 characters maximum). If shorter, the encoder will add padding with spaces.
+ * Radio Text (RT)**: Output the radio text string (64 characters maximum). 
+ *      If shorter, the encoder will add padding with spaces.
  * 
  * PI: 4660
  * GT: 2A
@@ -509,7 +501,7 @@ error_inconsistent_blocks:
 }
 
 /**
- * decode input message  
+ * decode input message and print it to stdout
 */
 void decodeMessage(vector<InputMessage>& dataChunks){
   

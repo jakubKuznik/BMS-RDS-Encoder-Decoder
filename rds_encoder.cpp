@@ -90,101 +90,101 @@ T parseUintArg(const char* arg, T min, T max) {
  * Check whenever float num (probably gained from -af) has exactly one decimal point 
  */
 bool hasExactlyOneDecimal(const std::string& str) {
-    // Split the string at the decimal point
-    size_t decimal_pos = str.find('.');
+  // Split the string at the decimal point
+  size_t decimal_pos = str.find('.');
 
-    // Ensure there is exactly one decimal point
-    if (decimal_pos == std::string::npos || str.find('.', decimal_pos + 1) != std::string::npos) {
-        return false;
-    }
+  // Ensure there is exactly one decimal point
+  if (decimal_pos == std::string::npos || str.find('.', decimal_pos + 1) != std::string::npos) {
+    return false;
+  }
 
-    // Split into two parts: before and after the decimal point
-    std::string before_decimal = str.substr(0, decimal_pos);
-    std::string after_decimal = str.substr(decimal_pos + 1);
+  // Split into two parts: before and after the decimal point
+  std::string before_decimal = str.substr(0, decimal_pos);
+  std::string after_decimal = str.substr(decimal_pos + 1);
 
-    // Check if there is exactly one digit after the decimal point
-    if (after_decimal.length() != 1) {
-        return false;
-    }
+  // Check if there is exactly one digit after the decimal point
+  if (after_decimal.length() != 1) {
+    return false;
+  }
 
-    // Check if there are digits before the decimal point (non-empty)
-    if (before_decimal.empty()) {
-        return false;
-    }
+  // Check if there are digits before the decimal point (non-empty)
+  if (before_decimal.empty()) {
+    return false;
+  }
 
-    return true;
+  return true;
 }
 
 /**
  * Function parses -af args (frequencies)
  */
 void parseAfArg(const char* arg, float (&af)[AF_SIZE]) {
-    std::string input(arg);
+  std::string input(arg);
 
-    // Find the comma and check if there's exactly one
-    size_t comma_pos = input.find(',');
-    if (comma_pos == std::string::npos) {
-        throw std::invalid_argument("Input string must contain a comma separating two values");
-    }
+  // Find the comma and check if there's exactly one
+  size_t comma_pos = input.find(',');
+  if (comma_pos == std::string::npos) {
+    throw std::invalid_argument("Input string must contain a comma separating two values");
+  }
 
-    size_t second_comma_pos = input.find(',', comma_pos + 1);
-    if (second_comma_pos != std::string::npos) {
-        throw std::invalid_argument("Input string must contain exactly one comma separating two values");
-    }
+  size_t second_comma_pos = input.find(',', comma_pos + 1);
+  if (second_comma_pos != std::string::npos) {
+    throw std::invalid_argument("Input string must contain exactly one comma separating two values");
+  }
 
 
-    // Extract the parts before and after the comma
-    std::string part1 = input.substr(0, comma_pos);
-    std::string part2 = input.substr(comma_pos + 1);
+  // Extract the parts before and after the comma
+  std::string part1 = input.substr(0, comma_pos);
+  std::string part2 = input.substr(comma_pos + 1);
 
-    // Check if both parts contain exactly one decimal point and digits before and after it
-    if (!hasExactlyOneDecimal(part1) || !hasExactlyOneDecimal(part2)) {
-        throw std::invalid_argument("Both parts must contain exactly one decimal point and digits before and after it");
-    }
+  // Check if both parts contain exactly one decimal point and digits before and after it
+  if (!hasExactlyOneDecimal(part1) || !hasExactlyOneDecimal(part2)) {
+    throw std::invalid_argument("Both parts must contain exactly one decimal point and digits before and after it");
+  }
 
-    // Attempt to parse the two parts as floats
-    std::istringstream iss1(part1), iss2(part2);
-    float freq1, freq2;
-    if (!(iss1 >> freq1) || !(iss2 >> freq2)) {
-        throw std::invalid_argument("Both parts must be valid numbers");
-    }
+  // Attempt to parse the two parts as floats
+  std::istringstream iss1(part1), iss2(part2);
+  float freq1, freq2;
+  if (!(iss1 >> freq1) || !(iss2 >> freq2)) {
+    throw std::invalid_argument("Both parts must be valid numbers");
+  }
 
-    // Set the frequencies to the af array
-    af[0] = freq1;
-    af[1] = freq2;
+  // Set the frequencies to the af array
+  af[0] = freq1;
+  af[1] = freq2;
 }
 
 /**
  * Functon parses string args such as -ps -rt 
  */
 void parseStringArg(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
-    // Regular expression to validate the input string
-    std::regex valid_regex("^[a-zA-Z0-9 ]*$");
+  // Regular expression to validate the input string
+  std::regex valid_regex("^[a-zA-Z0-9 ]*$");
 
-    // Check if the argument matches the regex pattern
-    if (!std::regex_match(arg, valid_regex)) {
-        throw std::invalid_argument("Input string contains invalid characters. Only alphanumeric and spaces are allowed.");
-    }
+  // Check if the argument matches the regex pattern
+  if (!std::regex_match(arg, valid_regex)) {
+    throw std::invalid_argument("Input string contains invalid characters. Only alphanumeric and spaces are allowed.");
+  }
 
-    size_t len = strlen(arg);
+  size_t len = strlen(arg);
   
-    if (len > maxLength) {
-        throw std::invalid_argument("Input string is too long (must be " + std::to_string(maxLength) + " characters or fewer)");
-    }
+  if (len > maxLength) {
+    throw std::invalid_argument("Input string is too long (must be " + std::to_string(maxLength) + " characters or fewer)");
+  }
 
-    strncpy(dest, arg, maxLength);
+  strncpy(dest, arg, maxLength);
 
-    if (padWithSpaces && len < maxLength) {
-        // Pad with spaces if the string is shorter and padding is required
-        for (size_t i = len; i < maxLength; ++i) {
-            dest[i] = ' ';
-        }
+  if (padWithSpaces && len < maxLength) {
+    // Pad with spaces if the string is shorter and padding is required
+    for (size_t i = len; i < maxLength; ++i) {
+      dest[i] = ' ';
     }
+  }
 
-    // Null-terminate the string if padding is not required (when input is shorter than maxLength)
-    if (!padWithSpaces) {
-        dest[len] = '\0';
-    }
+  // Null-terminate the string if padding is not required (when input is shorter than maxLength)
+  if (!padWithSpaces) {
+    dest[len] = '\0';
+  }
 }
 
 /**
@@ -335,8 +335,8 @@ void argParse(int argc, char **argv, ProgramConfig *config) {
   return;
 
 errorArgs:
-    cerr << "Error: wrong arguments. Try using {-h|--help}" << endl;
-    exit(1);
+  cerr << "Error: wrong arguments. Try using {-h|--help}" << endl;
+  exit(1);
 }
 
 /**
