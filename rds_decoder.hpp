@@ -10,7 +10,8 @@
 #include <vector>
 #include <bitset>
 #include <string>
-#include <cstring> 
+#include <cstring>
+#include <iomanip> 
 
 #define DATA_BITS 16
 #define CRC_BITS 10

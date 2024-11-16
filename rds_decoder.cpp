@@ -19,7 +19,6 @@ void printHelp(){
   cerr << "" << endl;
   cerr << "           MESSAGE" << endl;
   cerr << "             - Sequence of 0 and 1 that has to be a multiple of 26" << endl;
-  exit(1);
 }
 
 /**
@@ -52,7 +51,7 @@ void parseBinaryString(const string& binaryStr, vector<InputMessage>& dataChunks
 
 errorArgs:
   cerr << "Error: Invalid binary string format." << endl;
-  exit(1);
+  exit(2);
 }
 
 /**
@@ -60,9 +59,15 @@ errorArgs:
  */
 void parseArgs(int argc, char **argv, vector<InputMessage>& dataChunks) {
 
+  if (argc < 2){
+    printHelp();
+    exit(1);
+  }
+
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
       printHelp();
+      exit(0);
     } 
     else if (strcmp(argv[i], "-b") == 0) {
       if (i + 1 < argc) {
@@ -187,7 +192,8 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
         concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
-          aMessage = chunk.message; aUsed = true; continue;
+          aMessage = chunk.message; aUsed = true; 
+          continue;
         }
       }
       
@@ -196,7 +202,8 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
         concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
-          bMessage = chunk.message; bUsed = true;continue;
+          bMessage = chunk.message; bUsed = true;
+          continue;
         }
       }
       
@@ -205,7 +212,8 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
         concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
-          cMessage = chunk.message; cUsed = true; continue;
+          cMessage = chunk.message; cUsed = true; 
+          continue;
         }
       }
       
@@ -214,7 +222,8 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
         concatenatedData = (bitset<H_ROWS>(chunk.message) << CRC_BITS) | bitset<H_ROWS>(invertedCrc.to_ulong());
         
         if (matrixMultiplication(concatenatedData) == true){
-          dMessage = chunk.message; dUsed = true; continue;
+          dMessage = chunk.message; dUsed = true; 
+          continue;
         }
       }
       goto error_wrong_message;
@@ -226,10 +235,12 @@ void orderMessage(vector<InputMessage>& dataChunks, vector<uint16_t>& orderedDat
       if (is2A == true){
         goto error_multiple_groups;
       }
-      orderedData[(i * 4) + 0] = static_cast<uint16_t>(aMessage.to_ulong()); 
-      orderedData[(i * 4) + 1] = static_cast<uint16_t>(bMessage.to_ulong()); 
-      orderedData[(i * 4) + 2] = static_cast<uint16_t>(cMessage.to_ulong()); 
-      orderedData[(i * 4) + 3] = static_cast<uint16_t>(dMessage.to_ulong()); 
+
+
+      orderedData[((help & 0b11) * 4) + 0] = static_cast<uint16_t>(aMessage.to_ulong()); 
+      orderedData[((help & 0b11) * 4) + 1] = static_cast<uint16_t>(bMessage.to_ulong()); 
+      orderedData[((help & 0b11) * 4) + 2] = static_cast<uint16_t>(cMessage.to_ulong()); 
+      orderedData[((help & 0b11) * 4) + 3] = static_cast<uint16_t>(dMessage.to_ulong()); 
     } else if (((help >> 12) & 0b1111) == 0b0010) {
       is2A = true;
       if (is0A == true){
@@ -254,7 +265,7 @@ error_multiple_groups:
   exit(2);
 error_unsuported_format:
   cerr << "Unsuported format" << endl;
-  exit(2);
+  exit(1);
 }
 
 /**
@@ -373,8 +384,9 @@ void decode0A(vector<uint16_t>& orderedData){
     cout << "MS: Speech" << endl;
   }
   cout << "DI: " << bitset<1>(di) << endl;
-  cout << "AF: " << messageProperties.flags0A.af[0] 
-    << ", " << messageProperties.flags0A.af[1] << endl;
+  std::cout << std::fixed << setprecision(1); // Ensure 1 decimal place
+  std::cout << "AF: " << messageProperties.flags0A.af[0]
+    << ", " << messageProperties.flags0A.af[1] << std::endl;
   cout << "PS: \"";
   for (size_t i = 0; i < orderedData.size()/2; i++){
     if (i+1 < orderedData.size()/2){
