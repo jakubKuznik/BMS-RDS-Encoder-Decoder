@@ -10,7 +10,7 @@
 using namespace std;
 
 /**
- * Prints help and exit program with return code 1
+ * Prints help and exit program with return code 0 
 */
 void printHelp(){
   cerr << "Execution:" << endl;
@@ -46,6 +46,9 @@ void printHelp(){
   exit(0);
 }
 
+/**
+ * Parse bool arg 
+ */
 bool parseBoolArg(const char* arg) {
   try {
     int myInt = stoi(arg);
@@ -64,6 +67,9 @@ bool parseBoolArg(const char* arg) {
   }
 }
 
+/**
+ * Parse int of whatever range
+ */
 template <typename T>
 T parseUintArg(const char* arg, T min, T max) {
   try {
@@ -80,6 +86,9 @@ T parseUintArg(const char* arg, T min, T max) {
   }
 }
 
+/**
+ * Check whenever float num (probably gained from -af) has exactly one decimal point 
+ */
 bool hasExactlyOneDecimal(const std::string& str) {
     // Split the string at the decimal point
     size_t decimal_pos = str.find('.');
@@ -106,6 +115,9 @@ bool hasExactlyOneDecimal(const std::string& str) {
     return true;
 }
 
+/**
+ * Function parses -af args (frequencies)
+ */
 void parseAfArg(const char* arg, float (&af)[AF_SIZE]) {
     std::string input(arg);
 
@@ -142,6 +154,9 @@ void parseAfArg(const char* arg, float (&af)[AF_SIZE]) {
     af[1] = freq2;
 }
 
+/**
+ * Functon parses string args such as -ps -rt 
+ */
 void parseStringArg(const char* arg, char* dest, size_t maxLength, bool padWithSpaces = false) {
     // Regular expression to validate the input string
     std::regex valid_regex("^[a-zA-Z0-9 ]*$");
@@ -482,7 +497,7 @@ void generateOutput2a(ProgramConfig *config){
 }
 
 /** 
- * Whole message with CRC
+ * It generates whole message with CRC on stdout
  */
 void generateOutput(ProgramConfig *config){
 

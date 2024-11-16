@@ -22,12 +22,18 @@
 #define CRC_BLOCK_OFFSET_C 0b0101101000
 #define CRC_BLOCK_OFFSET_D 0b0110110100
 
+/**
+ * Holds flags that are the same for 0A and 2A 
+ */
 typedef struct {
   unsigned int pi;  
   unsigned int pty; 
   bool tp;          
 } FlagsCommon;
 
+/**
+ * Holds only 0A flags. 
+ */
 typedef struct {
   bool ms;                    
   bool ta;                     
@@ -35,11 +41,17 @@ typedef struct {
   char ps[PS_SIZE]; 
 } Flags0A;
 
+/**
+ * Holds only 2A flags. 
+ */
 typedef struct {
   char rt[RT_SIZE_PLUS_TERMINATOR];   
   bool ab;          
 } Flags2A;
 
+/**
+ * Holds whole program configuration with specific flags. 
+ */
 typedef struct {
   bool is0A;       
   bool is2A;       
