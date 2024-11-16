@@ -43,7 +43,7 @@ void printHelp(){
   cerr << endl;
   cerr << "Example: " << endl;
   cerr << "  ./rds_encoder -g 0A -pi 4660 -pty 5 -tp 1 -ms 0 -ta 1 -af 104.5,98.0 -ps \"RadioXYZ\"" << endl;
-  exit(1);
+  exit(0);
 }
 
 bool parseBoolArg(const char* arg) {
